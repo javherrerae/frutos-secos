@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema nativo incluido en Android Oreo; no requiere dependencias externas. -->
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#2E7D32</item>
+        <item name="android:navigationBarColor">#1B5E20</item>
+        <item name="android:statusBarColor">#1B5E20</item>
+    </style>
+</resources>
