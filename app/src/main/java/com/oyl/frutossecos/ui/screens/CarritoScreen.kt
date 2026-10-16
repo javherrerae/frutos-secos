@@ -128,10 +128,11 @@ fun CarritoScreen(
                 item {
                     Surface(color = CremaCarrito, shape = RoundedCornerShape(16.dp)) {
                         Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                            Text("Retiro en $tiendaRetiro · Gratis", fontWeight = FontWeight.Bold)
-                            Text("$direccionRetiro · Tienda demo", style = MaterialTheme.typography.bodySmall)
+                            Text("Ubicación de referencia: $tiendaRetiro", fontWeight = FontWeight.Bold)
+                            Text("$direccionRetiro · No es un punto de retiro real",
+                                style = MaterialTheme.typography.bodySmall)
                             TextButton(onClick = onCambiarRetiro) {
-                                Text("Cambiar punto de retiro", color = VerdeCarrito)
+                                Text("Cambiar ubicación de referencia", color = VerdeCarrito)
                             }
                         }
                     }
@@ -178,8 +179,8 @@ fun CarritoScreen(
                             )
 
                             FilaPrecio(
-                                etiqueta = "Retiro en tienda",
-                                precio = "Gratis"
+                                etiqueta = "Ubicación de referencia",
+                                precio = "Sin cargo"
                             )
 
                             HorizontalDivider(
@@ -210,7 +211,7 @@ fun CarritoScreen(
                 )
             ) {
                 Text(
-                    text = "Confirmar pedido demo  →",
+                    text = "Confirmar pedido  →",
                     fontSize = 15.sp
                 )
             }

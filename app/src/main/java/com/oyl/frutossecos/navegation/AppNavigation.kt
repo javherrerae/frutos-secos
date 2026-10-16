@@ -265,7 +265,7 @@ fun AppNavigation(
                     correoPerfil = correo
                     telefonoPerfil = telefono
                     avisosPerfil = avisos
-                    onMensaje("Perfil guardado para esta sesión demo.")
+                    onMensaje("Cambios del perfil guardados correctamente.")
                 },
                 onCerrarSesion = cerrarSesion,
                 tiendaRetiro = tiendaActual.comuna,
@@ -278,7 +278,7 @@ fun AppNavigation(
             onVolver = { pantalla = origenMapa },
             onSeleccionar = { id ->
                 tiendaId = id
-                onMensaje("Punto de retiro de demostración actualizado.")
+                onMensaje("Ubicación de referencia actualizada.")
                 pantalla = origenMapa
             }
         )
