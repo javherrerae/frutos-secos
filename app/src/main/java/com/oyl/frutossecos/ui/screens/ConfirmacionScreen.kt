@@ -87,8 +87,8 @@ fun ConfirmacionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Tu pedido de demostración se ha registrado " +
-                        "correctamente en esta sesión.",
+                text = "Tu pedido se ha registrado correctamente " +
+                            "y puedes consultarlo en tu historial.",
                 fontSize = 15.sp,
                 lineHeight = 23.sp,
                 textAlign = TextAlign.Center,

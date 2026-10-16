@@ -120,7 +120,7 @@ fun PerfilScreen(
                 }
                 Text(nombreGuardado.ifBlank { "Cliente OYL" },
                     style = MaterialTheme.typography.titleLarge)
-                Text("Cuenta de cliente · Demo", style = MaterialTheme.typography.bodySmall)
+                Text("Cuenta de cliente", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { selectorFoto.launch("image/*") }) {
                     Text(if (avatar == null) "Agregar foto de perfil" else "Cambiar foto de perfil")
                 }
@@ -161,8 +161,10 @@ fun PerfilScreen(
                         Switch(checked = avisos, onCheckedChange = { avisos = it })
                     }
                     Text("Español · Peso chileno (CLP)")
-                    Text("Preferencia de demostración. Todavía no activa notificaciones del teléfono.",
-                        style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Las notificaciones todavía no están habilitadas.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
             Button(onClick = {
@@ -173,19 +175,26 @@ fun PerfilScreen(
                 }
             }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = verde)) {
-                Text("Guardar cambios · Demo")
+                Text("Guardar cambios")
             }
             OutlinedButton(onClick = { confirmarSalida = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("Cerrar sesión", color = verde)
             }
-            Text("La foto se guarda solo en este dispositivo. Los demás datos se conservan durante la sesión de demostración.",
-                style = MaterialTheme.typography.bodySmall)
+            Text(
+                "La foto se guarda en este dispositivo. Los demás datos se conservan hasta cerrar sesión.",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
     if (confirmarSalida) {
         AlertDialog(onDismissRequest = { confirmarSalida = false },
             title = { Text("¿Cerrar sesión?") },
-            text = { Text("Se borrarán el perfil, la fotografía, el carrito y el historial de pedidos de esta sesión demo.") },
+            text = {
+                Text(
+                    "Al cerrar sesión se borrarán los datos del perfil, la fotografía, " +
+                            "el carrito y el historial de pedidos."
+                )
+            },
             confirmButton = { TextButton(onClick = {
                 confirmarSalida = false
                 archivoAvatar.delete()

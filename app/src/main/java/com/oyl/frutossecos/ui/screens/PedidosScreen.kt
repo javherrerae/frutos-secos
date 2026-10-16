@@ -33,7 +33,7 @@ fun PedidosScreen(pedidos: List<PedidoDemo>, onVerPedido: (String) -> Unit,
             item {
                 Text("Mis pedidos", style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold, color = VerdePedidos)
-                Text("Historial local · Demostración", style = MaterialTheme.typography.bodySmall)
+                Text("Historial de pedidos", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = !soloEnCurso, onClick = { soloEnCurso = false },
                         label = { Text("Todos (${pedidos.size})") })
@@ -54,11 +54,11 @@ fun PedidosScreen(pedidos: List<PedidoDemo>, onVerPedido: (String) -> Unit,
                     Column(Modifier.fillMaxWidth().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(pedido.codigo, fontWeight = FontWeight.Bold, color = VerdePedidos)
-                        Text("${pedido.estado} · Demo")
+                        Text("${pedido.estado}")
                         Text(fechaPedido(pedido.fechaMillis), style = MaterialTheme.typography.bodySmall)
                         Text("${pedido.cantidadBolsas} " + if (pedido.cantidadBolsas == 1) "bolsa" else "bolsas")
                         Text(dineroPedido(pedido.total), fontWeight = FontWeight.Bold)
-                        Text("Retiro en ${pedido.puntoRetiro} · Gratis")
+                        Text("Ubicación de referencia: ${pedido.puntoRetiro}")
                         TextButton(onClick = { onVerPedido(pedido.codigo) }) {
                             Text("Ver detalle", color = VerdePedidos)
                         }
@@ -87,7 +87,7 @@ fun DetallePedidoScreen(pedido: PedidoDemo?, onVolver: () -> Unit) {
                 item {
                     Text(pedido.codigo, fontWeight = FontWeight.Bold)
                     Text(fechaPedido(pedido.fechaMillis))
-                    Text("Estado: ${pedido.estado} · Demo", color = VerdePedidos)
+                    Text("Estado: ${pedido.estado}", color = VerdePedidos)
                 }
                 items(pedido.productos) { producto ->
                     Surface(color = CremaPedidos, shape = RoundedCornerShape(16.dp)) {
@@ -102,14 +102,23 @@ fun DetallePedidoScreen(pedido: PedidoDemo?, onVolver: () -> Unit) {
                 }
                 item {
                     Text("Subtotal: ${dineroPedido(pedido.total)}")
-                    Text("Retiro en ${pedido.puntoRetiro}: gratis")
+                    Text("Ubicación de referencia: ${pedido.puntoRetiro}")
                     Text(pedido.direccionRetiro)
-                    Text("Dirección ficticia · Demostración", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Ubicación real de referencia. No existe retiro físico de OYL.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     Text("Total: ${dineroPedido(pedido.total)}", fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge, color = VerdePedidos)
                 }
-                item { Text("Pedido de demostración. No se realizó ningún pago. El historial se guarda en este dispositivo y se borra al cerrar sesión.",
-                    style = MaterialTheme.typography.bodySmall) }
+                item {
+                    Text(
+                        "Este pedido se guarda en el dispositivo. " +
+                                "No se realizó ningún pago real. " +
+                                "El historial se elimina al cerrar sesión.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
