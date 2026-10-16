@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Scaffold
 import com.oyl.frutossecos.ui.components.BottomNavigationBar
 import com.oyl.frutossecos.ui.screens.MapaScreen
+import com.oyl.frutossecos.ui.screens.QRScreen
 import com.oyl.frutossecos.model.TiendasDemo
 import com.oyl.frutossecos.ui.screens.PerfilScreen
 import com.oyl.frutossecos.ui.screens.PedidosScreen
@@ -83,7 +84,8 @@ fun AppNavigation(
         pantalla = "inicio"
     }
     BackHandler(enabled = pantalla != "inicio") {
-        pantalla = when (pantalla) {
+        pantalla = when  (pantalla) {
+            "qr" -> "catalogo"
             "login", "registro" -> "inicio"
             "dashboard" -> { cerrarSesion(); "inicio" }
             "detalle", "carrito" -> "catalogo"
@@ -167,6 +169,9 @@ fun AppNavigation(
                 },
                 onAbrirCarrito = {
                     pantalla = "carrito"
+                },
+                onAbrirQR = {
+                    pantalla = "qr"
                 }
             )
         }
@@ -279,6 +284,16 @@ fun AppNavigation(
             }
         )
 
+
+        "qr" -> QRScreen(
+            onVolver = {
+                pantalla = "catalogo"
+            },
+            onAbrirProducto = { producto ->
+                productoSeleccionado = producto
+                pantalla = "detalle"
+            }
+        )
         // RUTA DESCONOCIDA
         else -> {
             PantallaPendiente(

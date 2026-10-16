@@ -36,7 +36,8 @@ private fun formatoPrecio(precio: Int): String {
 fun CatalogoScreen(
     onVolver: () -> Unit,
     onAbrirProducto: (Producto) -> Unit,
-    onAbrirCarrito: () -> Unit
+    onAbrirCarrito: () -> Unit,
+    onAbrirQR: () -> Unit
 ) {
     var busqueda by remember { mutableStateOf("") }
     var categoriaSeleccionada by remember {
@@ -92,6 +93,10 @@ fun CatalogoScreen(
                     .weight(1f)
                     .padding(start = 12.dp)
             )
+
+            TextButton(onClick = onAbrirQR) {
+                Text("Escanear QR")
+            }
 
             TextButton(onClick = onAbrirCarrito) {
                 Text(
