@@ -14,6 +14,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Scaffold
+import com.oyl.frutossecos.ui.components.BottomNavigationBar
+import com.oyl.frutossecos.ui.screens.MapaScreen
+import com.oyl.frutossecos.ui.screens.QRScreen
+import com.oyl.frutossecos.model.TiendasDemo
+import com.oyl.frutossecos.ui.screens.PerfilScreen
+import com.oyl.frutossecos.ui.screens.PedidosScreen
+import com.oyl.frutossecos.ui.screens.DetallePedidoScreen
+import com.oyl.frutossecos.viewmodel.PedidosViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +49,7 @@ fun AppNavigation(
     onMensaje: (String) -> Unit = {}
 ) {
     // Estado de navegación.
-    var pantalla by remember {
+    var pantalla by rememberSaveable {
         mutableStateOf(pantallaInicial)
     }
 
@@ -48,7 +60,46 @@ fun AppNavigation(
 
     // ViewModel compartido durante la navegación.
     val carritoViewModel: CarritoViewModel = viewModel()
+    val pedidosViewModel: PedidosViewModel = viewModel()
+    var codigoPedido by rememberSaveable { mutableStateOf<String?>(null) }
 
+    var nombrePerfil by rememberSaveable { mutableStateOf("") }
+    var correoPerfil by rememberSaveable { mutableStateOf("") }
+    var telefonoPerfil by rememberSaveable { mutableStateOf("") }
+    var avisosPerfil by rememberSaveable { mutableStateOf(true) }
+    var tiendaId by rememberSaveable { mutableStateOf("providencia") }
+    var origenMapa by rememberSaveable { mutableStateOf("perfil") }
+    val tiendaActual = TiendasDemo.buscar(tiendaId)
+    val cerrarSesion: () -> Unit = {
+        carritoViewModel.vaciarCarrito()
+        pedidosViewModel.limpiarSesion()
+        codigoPedido = null
+        productoSeleccionado = null
+        nombrePerfil = ""
+        correoPerfil = ""
+        telefonoPerfil = ""
+        avisosPerfil = true
+        tiendaId = "providencia"
+        origenMapa = "perfil"
+        pantalla = "inicio"
+    }
+    BackHandler(enabled = pantalla != "inicio") {
+        pantalla = when  (pantalla) {
+            "qr" -> "catalogo"
+            "login", "registro" -> "inicio"
+            "dashboard" -> { cerrarSesion(); "inicio" }
+            "detalle", "carrito" -> "catalogo"
+            "confirmacion", "detallePedido" -> "pedidos"
+            "mapa" -> origenMapa
+            else -> "dashboard"
+        }
+    }
+    val mostrarBarra = pantalla in listOf("dashboard", "catalogo", "detalle", "carrito", "pedidos", "detallePedido", "perfil", "mapa")
+    Scaffold(bottomBar = {
+        if (mostrarBarra) BottomNavigationBar(pantallaActual = pantalla,
+            onNavegar = { pantalla = it })
+    }) { espacio ->
+      Box(modifier = Modifier.fillMaxSize().padding(espacio)) {
     when (pantalla) {
 
         // PANTALLA 1: BIENVENIDA
@@ -102,11 +153,7 @@ fun AppNavigation(
                 onAbrirPerfil = {
                     pantalla = "perfil"
                 },
-                onCerrarSesion = {
-                    carritoViewModel.vaciarCarrito()
-                    productoSeleccionado = null
-                    pantalla = "inicio"
-                }
+                onCerrarSesion = cerrarSesion
             )
         }
 
@@ -122,6 +169,9 @@ fun AppNavigation(
                 },
                 onAbrirCarrito = {
                     pantalla = "carrito"
+                },
+                onAbrirQR = {
+                    pantalla = "qr"
                 }
             )
         }
@@ -167,37 +217,83 @@ fun AppNavigation(
                     carritoViewModel.eliminarProducto(productoId)
                 },
                 onConfirmar = {
-                    if (carritoViewModel.items.isNotEmpty()) {
+                    val pedido = pedidosViewModel.confirmar(carritoViewModel.items, tiendaActual)
+                    if (pedido != null) {
+                        codigoPedido = pedido.codigo
+                        carritoViewModel.vaciarCarrito()
                         pantalla = "confirmacion"
                     } else {
-                        onMensaje("El carrito está vacío.")
+                        onMensaje("Revisa el carrito y las cantidades antes de confirmar.")
                     }
-                }
+                },
+                tiendaRetiro = tiendaActual.comuna,
+                direccionRetiro = tiendaActual.direccion,
+                onCambiarRetiro = { origenMapa = "carrito"; pantalla = "mapa" }
             )
         }
 
         // PANTALLA 8: CONFIRMACIÓN
         "confirmacion" -> {
             ConfirmacionScreen(
-                total = carritoViewModel.subtotal,
+                total = pedidosViewModel.buscar(codigoPedido)?.total ?: 0,
                 onVolverInicio = {
-                    carritoViewModel.vaciarCarrito()
                     productoSeleccionado = null
                     pantalla = "dashboard"
-                }
+                },
+                onVerPedido = { pantalla = "detallePedido" }
             )
         }
 
-        // PANTALLA 9: PERFIL PROVISIONAL
+        "pedidos" -> PedidosScreen(
+            pedidos = pedidosViewModel.pedidos,
+            onVerPedido = { codigoPedido = it; pantalla = "detallePedido" },
+            onIrCatalogo = { pantalla = "catalogo" }
+        )
+        "detallePedido" -> DetallePedidoScreen(
+            pedido = pedidosViewModel.buscar(codigoPedido),
+            onVolver = { pantalla = "pedidos" }
+        )
+
+        // PANTALLA 9: PERFIL DE DEMOSTRACIÓN
         "perfil" -> {
-            PantallaPendiente(
-                titulo = "Mi perfil",
-                onVolver = {
-                    pantalla = "dashboard"
-                }
+            PerfilScreen(
+                nombreGuardado = nombrePerfil,
+                correoGuardado = correoPerfil,
+                telefonoGuardado = telefonoPerfil,
+                avisosGuardados = avisosPerfil,
+                onGuardar = { nombre, correo, telefono, avisos ->
+                    nombrePerfil = nombre
+                    correoPerfil = correo
+                    telefonoPerfil = telefono
+                    avisosPerfil = avisos
+                    onMensaje("Perfil guardado para esta sesión demo.")
+                },
+                onCerrarSesion = cerrarSesion,
+                tiendaRetiro = tiendaActual.comuna,
+                onAbrirMapa = { origenMapa = "perfil"; pantalla = "mapa" }
             )
         }
 
+        "mapa" -> MapaScreen(
+            tiendaActualId = tiendaId,
+            onVolver = { pantalla = origenMapa },
+            onSeleccionar = { id ->
+                tiendaId = id
+                onMensaje("Punto de retiro de demostración actualizado.")
+                pantalla = origenMapa
+            }
+        )
+
+
+        "qr" -> QRScreen(
+            onVolver = {
+                pantalla = "catalogo"
+            },
+            onAbrirProducto = { producto ->
+                productoSeleccionado = producto
+                pantalla = "detalle"
+            }
+        )
         // RUTA DESCONOCIDA
         else -> {
             PantallaPendiente(
@@ -208,9 +304,11 @@ fun AppNavigation(
             )
         }
     }
+      }
+    }
 }
 
-// Pantalla provisional hasta implementar el perfil real.
+// Pantalla para rutas desconocidas.
 @Composable
 private fun PantallaPendiente(
     titulo: String,

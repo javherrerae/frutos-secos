@@ -2,6 +2,8 @@
 package com.oyl.frutossecos.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -26,7 +28,8 @@ private val GrafitoConfirmacion = Color(0xFF292D26)
 @Composable
 fun ConfirmacionScreen(
     total: Int,
-    onVolverInicio: () -> Unit
+    onVolverInicio: () -> Unit,
+    onVerPedido: (() -> Unit)? = null
 ) {
     val precio = "$" + NumberFormat.getNumberInstance(
         Locale("es", "CL")
@@ -39,6 +42,7 @@ fun ConfirmacionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -134,6 +138,13 @@ fun ConfirmacionScreen(
 
             Spacer(modifier = Modifier.height(30.dp))
 
+            if (onVerPedido != null) {
+                Button(onClick = onVerPedido, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = VerdeConfirmacion)) {
+                    Text("Ver mi pedido")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             Button(
                 onClick = onVolverInicio,
                 modifier = Modifier

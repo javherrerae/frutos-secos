@@ -51,6 +51,10 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
+    //Scanner
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+
+
     // UI Compose & Material 3 (¡Sin dejar espacios vacíos!)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
