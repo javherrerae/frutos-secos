@@ -1,6 +1,11 @@
 package com.oyl.frutossecos.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Patterns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,10 +18,15 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import java.io.File
 
 @Composable
 fun PerfilScreen(
@@ -35,6 +45,45 @@ fun PerfilScreen(
     var avisos by rememberSaveable(avisosGuardados) { mutableStateOf(avisosGuardados) }
     var intentoGuardar by rememberSaveable { mutableStateOf(false) }
     var confirmarSalida by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val archivoAvatar = remember(context) { File(context.filesDir, "avatar_perfil_demo.jpg") }
+    var versionAvatar by remember { mutableIntStateOf(0) }
+    var mensajeAvatar by remember { mutableStateOf<String?>(null) }
+    val avatar = remember(versionAvatar) { cargarAvatar(archivoAvatar) }
+
+    // GetContent permite elegir una foto sin solicitar permisos amplios de galería.
+    val selectorFoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val imagen = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    // Se lee y reduce la foto para evitar imágenes enormes en memoria.
+                    val bytes = stream.readBytes()
+                    val opcionesMedida = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opcionesMedida)
+                    val mayorLado = maxOf(opcionesMedida.outWidth, opcionesMedida.outHeight)
+                    val factor = generateSequence(1) { it * 2 }.first { mayorLado / it <= 512 }
+                    val opciones = BitmapFactory.Options().apply { inSampleSize = factor }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opciones)
+                }
+            }.getOrNull()
+            if (imagen != null) {
+                val guardado = runCatching {
+                    archivoAvatar.outputStream().use { imagen.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+                }.getOrDefault(false)
+                imagen.recycle()
+                if (guardado) {
+                    versionAvatar++
+                    mensajeAvatar = "Foto de perfil actualizada en este dispositivo."
+                } else {
+                    mensajeAvatar = "No se pudo guardar la fotografía."
+                }
+            } else {
+                mensajeAvatar = "No se pudo abrir esa imagen. Prueba con otra fotografía."
+            }
+        }
+    }
+
     val errorNombre = nombre.trim().length < 2
     val errorCorreo = !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches()
     val errorTelefono = telefono.isNotBlank() &&
@@ -55,14 +104,34 @@ fun PerfilScreen(
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(modifier = Modifier.size(76.dp).background(crema, CircleShape),
                     contentAlignment = Alignment.Center) {
-                    val iniciales = nombre.trim().split(Regex("\\s+"))
-                        .filter { it.isNotBlank() }.take(2)
-                        .joinToString("") { it.take(1).uppercase() }.ifBlank { "OYL" }
-                    Text(iniciales, style = MaterialTheme.typography.headlineMedium, color = verde)
+                    if (avatar != null) {
+                        Image(
+                            bitmap = avatar.asImageBitmap(),
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        val iniciales = nombre.trim().split(Regex("\\s+"))
+                            .filter { it.isNotBlank() }.take(2)
+                            .joinToString("") { it.take(1).uppercase() }.ifBlank { "OYL" }
+                        Text(iniciales, style = MaterialTheme.typography.headlineMedium, color = verde)
+                    }
                 }
                 Text(nombreGuardado.ifBlank { "Cliente OYL" },
                     style = MaterialTheme.typography.titleLarge)
                 Text("Cuenta de cliente · Demo", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { selectorFoto.launch("image/*") }) {
+                    Text(if (avatar == null) "Agregar foto de perfil" else "Cambiar foto de perfil")
+                }
+                if (avatar != null) {
+                    TextButton(onClick = {
+                        archivoAvatar.delete()
+                        versionAvatar++
+                        mensajeAvatar = "Foto eliminada."
+                    }) { Text("Quitar foto") }
+                }
+                mensajeAvatar?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
             Text("Datos personales", fontWeight = FontWeight.Bold)
             OutlinedTextField(value = nombre, onValueChange = { nombre = it },
@@ -109,18 +178,23 @@ fun PerfilScreen(
             OutlinedButton(onClick = { confirmarSalida = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("Cerrar sesión", color = verde)
             }
-            Text("Los datos se conservan durante esta sesión de demostración. Usa datos ficticios.",
+            Text("La foto se guarda solo en este dispositivo. Los demás datos se conservan durante la sesión de demostración.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
     if (confirmarSalida) {
         AlertDialog(onDismissRequest = { confirmarSalida = false },
             title = { Text("¿Cerrar sesión?") },
-            text = { Text("Se borrarán el perfil, el carrito y el historial de pedidos de esta sesión demo.") },
+            text = { Text("Se borrarán el perfil, la fotografía, el carrito y el historial de pedidos de esta sesión demo.") },
             confirmButton = { TextButton(onClick = {
                 confirmarSalida = false
+                archivoAvatar.delete()
                 onCerrarSesion()
             }) { Text("Cerrar sesión") } },
             dismissButton = { TextButton(onClick = { confirmarSalida = false }) { Text("Cancelar") } })
     }
 }
+
+private fun cargarAvatar(archivo: File): Bitmap? =
+    if (archivo.exists()) runCatching { BitmapFactory.decodeFile(archivo.absolutePath) }.getOrNull()
+    else null
