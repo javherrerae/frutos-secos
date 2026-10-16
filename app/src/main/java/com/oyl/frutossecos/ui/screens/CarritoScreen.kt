@@ -36,7 +36,10 @@ fun CarritoScreen(
     onAumentar: (Int) -> Unit,
     onDisminuir: (Int) -> Unit,
     onEliminar: (Int) -> Unit,
-    onConfirmar: () -> Unit
+    onConfirmar: () -> Unit,
+    tiendaRetiro: String = "Providencia",
+    direccionRetiro: String = "Av. del Almendro 120",
+    onCambiarRetiro: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -69,7 +72,9 @@ fun CarritoScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "${items.sumOf { it.cantidad }} bolsas en tu carrito",
+            text = items.sumOf { it.cantidad }.let { cantidad ->
+                "$cantidad " + (if (cantidad == 1) "bolsa" else "bolsas") + " en tu carrito"
+            },
             fontSize = 14.sp,
             color = GrafitoCarrito
         )
@@ -120,6 +125,17 @@ fun CarritoScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    Surface(color = CremaCarrito, shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                            Text("Retiro en $tiendaRetiro · Gratis", fontWeight = FontWeight.Bold)
+                            Text("$direccionRetiro · Tienda demo", style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = onCambiarRetiro) {
+                                Text("Cambiar punto de retiro", color = VerdeCarrito)
+                            }
+                        }
+                    }
+                }
                 items(
                     items = items,
                     key = { it.producto.id }
