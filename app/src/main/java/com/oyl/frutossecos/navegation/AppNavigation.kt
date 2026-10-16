@@ -203,7 +203,7 @@ fun AppNavigation(
         "carrito" -> {
             CarritoScreen(
                 items = carritoViewModel.items,
-                subtotal = pedidosViewModel.buscar(codigoPedido)?.total ?: 0,
+                subtotal = carritoViewModel.subtotal,
                 onVolver = {
                     pantalla = "catalogo"
                 },
