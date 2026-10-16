@@ -33,7 +33,7 @@ fun PedidosScreen(pedidos: List<PedidoDemo>, onVerPedido: (String) -> Unit,
             item {
                 Text("Mis pedidos", style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold, color = VerdePedidos)
-                Text("Pedidos de esta sesión · Demostración", style = MaterialTheme.typography.bodySmall)
+                Text("Historial local · Demostración", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = !soloEnCurso, onClick = { soloEnCurso = false },
                         label = { Text("Todos (${pedidos.size})") })
@@ -65,7 +65,7 @@ fun PedidosScreen(pedidos: List<PedidoDemo>, onVerPedido: (String) -> Unit,
                     }
                 }
             }
-            item { Text("Historial temporal. No se realizan pagos ni se envían pedidos al servidor.",
+            item { Text("Historial guardado en este dispositivo hasta cerrar sesión. No se realizan pagos ni se envían pedidos al servidor.",
                 style = MaterialTheme.typography.bodySmall) }
         }
     }
@@ -108,7 +108,7 @@ fun DetallePedidoScreen(pedido: PedidoDemo?, onVolver: () -> Unit) {
                     Text("Total: ${dineroPedido(pedido.total)}", fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge, color = VerdePedidos)
                 }
-                item { Text("Pedido de demostración. No se realizó ningún pago. El historial se borra al cerrar sesión y no tiene almacenamiento permanente.",
+                item { Text("Pedido de demostración. No se realizó ningún pago. El historial se guarda en este dispositivo y se borra al cerrar sesión.",
                     style = MaterialTheme.typography.bodySmall) }
             }
         }

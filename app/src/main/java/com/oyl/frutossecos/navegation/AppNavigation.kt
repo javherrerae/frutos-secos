@@ -83,11 +83,10 @@ fun AppNavigation(
         origenMapa = "perfil"
         pantalla = "inicio"
     }
-    BackHandler(enabled = pantalla != "inicio") {
+    BackHandler(enabled = pantalla != "inicio" && pantalla != "dashboard") {
         pantalla = when  (pantalla) {
             "qr" -> "catalogo"
             "login", "registro" -> "inicio"
-            "dashboard" -> { cerrarSesion(); "inicio" }
             "detalle", "carrito" -> "catalogo"
             "confirmacion", "detallePedido" -> "pedidos"
             "mapa" -> origenMapa
