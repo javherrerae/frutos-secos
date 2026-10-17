@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,15 +41,15 @@ private val GrafitoOYL = Color(0xFF292D26)
 @Composable
 fun LoginScreen(
     onVolver: () -> Unit,
-    onIngresar: () -> Unit
+    onIngresar: (String, String) -> Unit,
+    cargando: Boolean = false,
+    mensajeError: String? = null
 ) {
     var correo by rememberSaveable { mutableStateOf("") }
     var clave by rememberSaveable { mutableStateOf("") }
 
-    val correoValido = android.util.Patterns.EMAIL_ADDRESS
-        .matcher(correo.trim()).matches()
+    val correoValido = correo.trim().isNotEmpty()
 
-    val correoError = correo.isNotBlank() && !correoValido
     val claveError = clave.isNotBlank() && clave.length < 6
 
     Surface(
@@ -75,7 +78,7 @@ fun LoginScreen(
             )
 
             Text(
-                text = "Inicia sesión en tu cuenta",
+                text = "Inicia sesión con tu cuenta de OYL Frutos Secos",
                 modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
                 color = GrafitoOYL
             )
@@ -84,14 +87,8 @@ fun LoginScreen(
                 value = correo,
                 onValueChange = { correo = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Correo electrónico") },
+                label = { Text("Correo electrónico o alias") },
                 singleLine = true,
-                isError = correoError,
-                supportingText = {
-                    if (correoError) {
-                        Text("Ingresa un correo válido.")
-                    }
-                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 ),
@@ -119,11 +116,21 @@ fun LoginScreen(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            if (mensajeError != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = mensajeError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = onIngresar,
-                enabled = correoValido && clave.length >= 6,
+                onClick = { onIngresar(correo.trim(), clave.trim()) },
+                enabled = correoValido && clave.length >= 6 && !cargando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -131,12 +138,28 @@ fun LoginScreen(
                     containerColor = VerdeOYL
                 )
             ) {
-                Text("Iniciar sesión")
+                if (cargando) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Iniciar sesión")
+                }
             }
 
             TextButton(onClick = onVolver) {
                 Text("Volver al inicio", color = VerdeOYL)
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "💡 Para pruebas: admin@admin.cl / admin123",
+                fontSize = 12.sp,
+                color = GrafitoOYL.copy(alpha = 0.7f)
+            )
         }
     }
 }

@@ -32,6 +32,7 @@ private fun formatoCarrito(precio: Int): String {
 fun CarritoScreen(
     items: List<ItemCarrito>,
     subtotal: Int,
+    cargando: Boolean = false,
     onVolver: () -> Unit,
     onAumentar: (Int) -> Unit,
     onDisminuir: (Int) -> Unit,
@@ -128,11 +129,10 @@ fun CarritoScreen(
                 item {
                     Surface(color = CremaCarrito, shape = RoundedCornerShape(16.dp)) {
                         Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                            Text("Ubicación de referencia: $tiendaRetiro", fontWeight = FontWeight.Bold)
-                            Text("$direccionRetiro · No es un punto de retiro real",
-                                style = MaterialTheme.typography.bodySmall)
+                            Text("Retiro en $tiendaRetiro · Gratis", fontWeight = FontWeight.Bold)
+                            Text("$direccionRetiro · Tienda demo", style = MaterialTheme.typography.bodySmall)
                             TextButton(onClick = onCambiarRetiro) {
-                                Text("Cambiar ubicación de referencia", color = VerdeCarrito)
+                                Text("Cambiar punto de retiro", color = VerdeCarrito)
                             }
                         }
                     }
@@ -179,8 +179,8 @@ fun CarritoScreen(
                             )
 
                             FilaPrecio(
-                                etiqueta = "Ubicación de referencia",
-                                precio = "Sin cargo"
+                                etiqueta = "Retiro en tienda",
+                                precio = "Gratis"
                             )
 
                             HorizontalDivider(
@@ -202,6 +202,7 @@ fun CarritoScreen(
 
             Button(
                 onClick = onConfirmar,
+                enabled = !cargando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
@@ -210,10 +211,24 @@ fun CarritoScreen(
                     containerColor = VerdeCarrito
                 )
             ) {
-                Text(
-                    text = "Confirmar pedido  →",
-                    fontSize = 15.sp
-                )
+                if (cargando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Procesando pedido...",
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "Confirmar pedido demo  →",
+                        fontSize = 15.sp
+                    )
+                }
             }
 
             Text(

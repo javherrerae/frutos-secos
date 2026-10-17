@@ -36,6 +36,8 @@ fun PerfilScreen(
     avisosGuardados: Boolean,
     onGuardar: (String, String, String, Boolean) -> Unit,
     onCerrarSesion: () -> Unit,
+    rol: String = "cliente",
+    estadoConexion: String = "Conectado al servidor",
     tiendaRetiro: String = "Providencia",
     onAbrirMapa: () -> Unit = {}
 ) {
@@ -120,7 +122,9 @@ fun PerfilScreen(
                 }
                 Text(nombreGuardado.ifBlank { "Cliente OYL" },
                     style = MaterialTheme.typography.titleLarge)
-                Text("Cuenta de cliente", style = MaterialTheme.typography.bodySmall)
+                Text("Rol: ${rol.replaceFirstChar { it.uppercase() }} · $estadoConexion",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (estadoConexion.contains("servidor", ignoreCase = true)) verde else Color(0xFFC58B52))
                 TextButton(onClick = { selectorFoto.launch("image/*") }) {
                     Text(if (avatar == null) "Agregar foto de perfil" else "Cambiar foto de perfil")
                 }
@@ -161,10 +165,6 @@ fun PerfilScreen(
                         Switch(checked = avisos, onCheckedChange = { avisos = it })
                     }
                     Text("Español · Peso chileno (CLP)")
-                    Text(
-                        "Las notificaciones todavía no están habilitadas.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
                 }
             }
             Button(onClick = {
@@ -175,26 +175,19 @@ fun PerfilScreen(
                 }
             }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = verde)) {
-                Text("Guardar cambios")
+                Text("Guardar cambios de perfil")
             }
             OutlinedButton(onClick = { confirmarSalida = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("Cerrar sesión", color = verde)
             }
-            Text(
-                "La foto se guarda en este dispositivo. Los demás datos se conservan hasta cerrar sesión.",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text("Datos del perfil persistidos en la base de datos local y sincronizados.",
+                style = MaterialTheme.typography.bodySmall)
         }
     }
     if (confirmarSalida) {
         AlertDialog(onDismissRequest = { confirmarSalida = false },
             title = { Text("¿Cerrar sesión?") },
-            text = {
-                Text(
-                    "Al cerrar sesión se borrarán los datos del perfil, la fotografía, " +
-                            "el carrito y el historial de pedidos."
-                )
-            },
+            text = { Text("Se borrarán el perfil, la fotografía, el carrito y el historial de pedidos de esta sesión demo.") },
             confirmButton = { TextButton(onClick = {
                 confirmarSalida = false
                 archivoAvatar.delete()

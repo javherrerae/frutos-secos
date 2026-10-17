@@ -77,16 +77,14 @@ fun QRScreen(onVolver: () -> Unit, onAbrirProducto: (Producto) -> Unit) {
                         }
                     } else if (!resultado.isNullOrBlank()) {
                         Text("Código no reconocido", fontWeight = FontWeight.Bold)
-                        Text("Este código QR no corresponde a un producto del catálogo.")
+                        Text("Este código QR no pertenece al catálogo de demostración.")
                         Text("Contenido leído: ${resultado?.take(120)}")
                     }
                 }
             }
         }
         if (aviso != null) Text(aviso!!, color = MaterialTheme.colorScheme.error)
-        Text(
-            "Actualmente se reconocen códigos de productos OYL:1 a OYL:6.",
-            style = MaterialTheme.typography.bodySmall
-        )
+        Text("Demo: utiliza un QR con el texto OYL:1 hasta OYL:6. No se envían datos a un servidor.",
+            style = MaterialTheme.typography.bodySmall)
     }
 }
