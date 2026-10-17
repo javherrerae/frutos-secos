@@ -25,9 +25,13 @@ interface UsuarioDao {
     @Query("SELECT * FROM usuarios ORDER BY id ASC")
     fun obtenerTodos(): List<Usuario>
 
-    /** Valida credenciales locales según alias y contraseña. */
-    @Query("SELECT * FROM usuarios WHERE alias = :alias AND contrasena = :contrasena LIMIT 1")
-    fun autenticar(alias: String, contrasena: String): Usuario?
+    /** Valida credenciales locales según alias o correo y contraseña. */
+    @Query("SELECT * FROM usuarios WHERE (alias = :credencial OR correo = :credencial) AND contrasena = :contrasena LIMIT 1")
+    fun autenticar(credencial: String, contrasena: String): Usuario?
+
+    /** Busca un usuario por alias o correo. */
+    @Query("SELECT * FROM usuarios WHERE alias = :credencial OR correo = :credencial LIMIT 1")
+    fun buscarPorAliasOCorreo(credencial: String): Usuario?
 
     /** Obtiene el perfil de un usuario por su identificador. */
     @Query("SELECT * FROM usuarios WHERE id = :id LIMIT 1")

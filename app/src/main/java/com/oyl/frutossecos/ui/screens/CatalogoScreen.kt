@@ -37,7 +37,11 @@ fun CatalogoScreen(
     onVolver: () -> Unit,
     onAbrirProducto: (Producto) -> Unit,
     onAbrirCarrito: () -> Unit,
-    onAbrirQR: () -> Unit
+    onAbrirQR: () -> Unit,
+    productos: List<Producto> = ProductosDemo.productos,
+    cargando: Boolean = false,
+    mensajeEstado: String? = null,
+    onRefrescar: () -> Unit = {}
 ) {
     var busqueda by remember { mutableStateOf("") }
     var categoriaSeleccionada by remember {
@@ -51,7 +55,8 @@ fun CatalogoScreen(
         "Frutas deshidratadas"
     )
 
-    val productosFiltrados = ProductosDemo.productos.filter {
+    val listaBase = if (productos.isNotEmpty()) productos else ProductosDemo.productos
+    val productosFiltrados = listaBase.filter {
         val coincideBusqueda =
             it.nombre.contains(busqueda, ignoreCase = true) ||
                     it.categoria.contains(busqueda, ignoreCase = true)
@@ -94,6 +99,10 @@ fun CatalogoScreen(
                     .padding(start = 12.dp)
             )
 
+            TextButton(onClick = onRefrescar) {
+                Text(if (cargando) "⏳" else "🔄", fontSize = 18.sp)
+            }
+
             TextButton(onClick = onAbrirQR) {
                 Text("Escanear QR")
             }
@@ -106,7 +115,23 @@ fun CatalogoScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        if (mensajeEstado != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Surface(
+                color = CremaCatalogo,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = mensajeEstado,
+                    fontSize = 11.sp,
+                    color = VerdeCatalogo,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = "Buscar productos",

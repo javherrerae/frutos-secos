@@ -54,7 +54,7 @@ fun PedidosScreen(pedidos: List<PedidoDemo>, onVerPedido: (String) -> Unit,
                     Column(Modifier.fillMaxWidth().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(pedido.codigo, fontWeight = FontWeight.Bold, color = VerdePedidos)
-                        Text("${pedido.estado}")
+                        Text(pedido.estado)
                         Text(fechaPedido(pedido.fechaMillis), style = MaterialTheme.typography.bodySmall)
                         Text("${pedido.cantidadBolsas} " + if (pedido.cantidadBolsas == 1) "bolsa" else "bolsas")
                         Text(dineroPedido(pedido.total), fontWeight = FontWeight.Bold)
@@ -113,9 +113,7 @@ fun DetallePedidoScreen(pedido: PedidoDemo?, onVolver: () -> Unit) {
                 }
                 item {
                     Text(
-                        "Este pedido se guarda en el dispositivo. " +
-                                "No se realizó ningún pago real. " +
-                                "El historial se elimina al cerrar sesión.",
+                        "Este pedido se guarda en el dispositivo. No se realizó ningún pago real. El historial se elimina al cerrar sesión.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

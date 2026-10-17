@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,7 +40,9 @@ private val GrafitoOYL = Color(0xFF292D26)
 @Composable
 fun RegisterScreen(
     onVolver: () -> Unit,
-    onRegistroExitoso: () -> Unit
+    onRegistrar: (String, String, String) -> Unit,
+    cargando: Boolean = false,
+    mensajeError: String? = null
 ) {
     var nombre by rememberSaveable { mutableStateOf("") }
     var correo by rememberSaveable { mutableStateOf("") }
@@ -152,11 +157,21 @@ fun RegisterScreen(
                 shape = RoundedCornerShape(14.dp)
             )
 
+            if (mensajeError != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = mensajeError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = onRegistroExitoso,
-                enabled = formularioValido,
+                onClick = { onRegistrar(nombre.trim(), correo.trim(), clave.trim()) },
+                enabled = formularioValido && !cargando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -164,7 +179,15 @@ fun RegisterScreen(
                     containerColor = VerdeOYL
                 )
             ) {
-                Text("Crear cuenta")
+                if (cargando) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Crear cuenta")
+                }
             }
 
             TextButton(onClick = onVolver) {

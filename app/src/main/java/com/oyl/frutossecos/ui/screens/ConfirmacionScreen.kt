@@ -28,6 +28,8 @@ private val GrafitoConfirmacion = Color(0xFF292D26)
 @Composable
 fun ConfirmacionScreen(
     total: Int,
+    codigoPedido: String? = null,
+    mensajeServidor: String? = null,
     onVolverInicio: () -> Unit,
     onVerPedido: (() -> Unit)? = null
 ) {
@@ -87,8 +89,10 @@ fun ConfirmacionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Tu pedido se ha registrado correctamente " +
-                            "y puedes consultarlo en tu historial.",
+                text = if (!codigoPedido.isNullOrBlank())
+                    "Tu orden $codigoPedido se ha registrado exitosamente en el sistema."
+                else
+                    "Tu pedido se ha procesado correctamente en el sistema.",
                 fontSize = 15.sp,
                 lineHeight = 23.sp,
                 textAlign = TextAlign.Center,
@@ -107,6 +111,21 @@ fun ConfirmacionScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    if (!codigoPedido.isNullOrBlank()) {
+                        Text(
+                            text = "Código de seguimiento",
+                            fontSize = 12.sp,
+                            color = GrafitoConfirmacion
+                        )
+                        Text(
+                            text = codigoPedido,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = VerdeConfirmacion
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
                     Text(
                         text = "Total de la compra",
                         fontSize = 14.sp,
@@ -121,15 +140,22 @@ fun ConfirmacionScreen(
                         fontWeight = FontWeight.Bold,
                         color = VerdeConfirmacion
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Estado inicial: Pendiente de Validación",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = GrafitoConfirmacion
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Esta operación es una simulación. " +
-                        "No se realizó ningún pago ni se envió " +
-                        "una orden a un servidor.",
+                text = mensajeServidor ?: "Esta operación es una simulación. No se realizó ningún pago ni se enviaron cobros bancarios.",
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 textAlign = TextAlign.Center,

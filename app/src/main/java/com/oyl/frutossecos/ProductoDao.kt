@@ -36,4 +36,8 @@ interface ProductoDao {
     /** Actualiza la información o existencia en la copia local del producto. */
     @Update
     fun actualizar(producto: Producto)
+
+    /** Rebaja el stock de un producto tras confirmar un pedido. No permite stock negativo. */
+    @Query("UPDATE productos SET stock = MAX(stock - :cantidad, 0) WHERE id = :idProducto")
+    fun rebajarStock(idProducto: Int, cantidad: Int)
 }

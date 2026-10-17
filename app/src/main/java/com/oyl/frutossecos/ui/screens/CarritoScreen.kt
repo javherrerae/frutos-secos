@@ -32,6 +32,7 @@ private fun formatoCarrito(precio: Int): String {
 fun CarritoScreen(
     items: List<ItemCarrito>,
     subtotal: Int,
+    cargando: Boolean = false,
     onVolver: () -> Unit,
     onAumentar: (Int) -> Unit,
     onDisminuir: (Int) -> Unit,
@@ -202,6 +203,7 @@ fun CarritoScreen(
 
             Button(
                 onClick = onConfirmar,
+                enabled = !cargando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
@@ -210,10 +212,24 @@ fun CarritoScreen(
                     containerColor = VerdeCarrito
                 )
             ) {
-                Text(
-                    text = "Confirmar pedido  →",
-                    fontSize = 15.sp
-                )
+                if (cargando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Procesando pedido...",
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "Confirmar pedido demo  →",
+                        fontSize = 15.sp
+                    )
+                }
             }
 
             Text(

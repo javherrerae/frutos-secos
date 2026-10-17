@@ -1,134 +1,202 @@
 package com.oyl.frutossecos.viewmodel
 
 import android.app.Application
-import android.content.Context
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.oyl.frutossecos.AppDatabase
+import com.oyl.frutossecos.Pedido
+import com.oyl.frutossecos.dto.CrearPedidoRequest
+import com.oyl.frutossecos.dto.PedidoItemDto
 import com.oyl.frutossecos.model.ItemCarrito
 import com.oyl.frutossecos.model.LineaPedidoDemo
 import com.oyl.frutossecos.model.PedidoDemo
 import com.oyl.frutossecos.model.TiendaDemo
 import com.oyl.frutossecos.model.TiendasDemo
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
+import com.oyl.frutossecos.repository.PedidoRepository
+import com.oyl.frutossecos.repository.ResultadoSync
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 /**
- * Historial LOCAL de demostración. No realiza compras ni utiliza la tabla Room
- * de pedidos. Sobrevive al cierre de la aplicación, pero se borra al cerrar sesión.
+ * ViewModel que gestiona el ciclo de vida de los pedidos.
+ * Conecta la confirmación y consulta de pedidos con la API REST de Spring Boot
+ * a través de PedidoRepository, guardando una copia en Room (SQLite).
  */
 class PedidosViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val preferencias = application.getSharedPreferences(
-        "oyl_historial_pedidos_demo", Context.MODE_PRIVATE
-    )
+    private val db = AppDatabase.crear(application)
+    private val repository = PedidoRepository(db.pedidoDao(), db.pedidoItemDao())
 
     private val _pedidos = mutableStateListOf<PedidoDemo>()
     val pedidos: List<PedidoDemo> get() = _pedidos.toList()
 
-    init {
-        recuperarPedidos()
+    var cargando by mutableStateOf(false)
+        private set
+
+    var mensajeUltimoPedido by mutableStateOf<String?>(null)
+        private set
+
+    var idUsuarioActivo: Int = 1
+
+    fun configurarUsuario(idUsuario: Int) {
+        idUsuarioActivo = idUsuario
+        cargarPedidos(idUsuario)
     }
 
+    /**
+     * Consulta los pedidos del usuario en el servidor backend (o Room si offline).
+     */
+    fun cargarPedidos(idUsuario: Int = idUsuarioActivo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val resultado = repository.obtenerPorUsuario(idUsuario)
+            withContext(Dispatchers.Main) {
+                when (resultado) {
+                    is ResultadoSync.Exito -> {
+                        _pedidos.clear()
+                        _pedidos.addAll(resultado.datos.map { it.toDemoModel() })
+                    }
+                    is ResultadoSync.DesdeCacheConError -> {
+                        _pedidos.clear()
+                        _pedidos.addAll(resultado.datos.map { it.toDemoModel() })
+                    }
+                    is ResultadoSync.Error -> {
+                        // Mantener los que ya estén en memoria
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Confirma el pedido enviándolo a la API REST de Spring Boot.
+     * Si el servidor no responde, lo guarda localmente en Room con estado inicial.
+     */
     fun confirmar(
         items: List<ItemCarrito>,
-        tienda: TiendaDemo = TiendasDemo.todas.first()
-    ): PedidoDemo? {
+        tienda: TiendaDemo = TiendasDemo.todas.first(),
+        onCompletado: (PedidoDemo?) -> Unit
+    ) {
         if (items.isEmpty() || items.any {
                 it.cantidad <= 0 || it.cantidad > it.producto.stock || it.producto.precio < 0
-            }) return null
+            }) {
+            onCompletado(null)
+            return
+        }
 
-        val pedido = PedidoDemo(
-            codigo = "OYL-" + UUID.randomUUID().toString().take(8).uppercase(),
-            fechaMillis = System.currentTimeMillis(),
-            puntoRetiro = tienda.comuna,
-            direccionRetiro = "${tienda.direccion} · ${tienda.comuna}",
-            productos = items.map {
-                LineaPedidoDemo(
-                    nombre = it.producto.nombre,
-                    formato = it.producto.peso,
-                    precioUnitario = it.producto.precio,
-                    cantidad = it.cantidad
+        cargando = true
+        val totalCalculado = items.sumOf { it.subtotal }.toDouble()
+        val formatoFecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val fechaActual = formatoFecha.format(Date())
+
+        val request = CrearPedidoRequest(
+            idUsuario = idUsuarioActivo,
+            modalidadEntrega = "Retiro en ${tienda.comuna}",
+            items = items.map {
+                PedidoItemDto(
+                    idProducto = it.producto.id,
+                    nombreProducto = it.producto.nombre,
+                    cantidad = it.cantidad,
+                    precioUnitario = it.producto.precio.toDouble()
                 )
             }
         )
-        _pedidos.add(0, pedido)
-        guardarPedidos()
-        return pedido
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val resultado = repository.crearPedido(request)
+
+            val (pedidoCreado, mensaje) = when (resultado) {
+                is ResultadoSync.Exito -> {
+                    val entity = resultado.datos
+                    val demo = PedidoDemo(
+                        codigo = entity.numeroPedido,
+                        fechaMillis = System.currentTimeMillis(),
+                        puntoRetiro = tienda.comuna,
+                        direccionRetiro = "${tienda.direccion} · ${tienda.comuna}",
+                        estado = entity.estado,
+                        productos = items.map {
+                            LineaPedidoDemo(
+                                nombre = it.producto.nombre,
+                                formato = it.producto.peso,
+                                precioUnitario = it.producto.precio,
+                                cantidad = it.cantidad
+                            )
+                        }
+                    )
+                    Pair(demo, "¡Pedido enviado y registrado en el servidor central!")
+                }
+                else -> {
+                    // Fallback offline a Room ejecutado de forma segura en Dispatchers.IO
+                    val numLocal = "OYL-PED-" + UUID.randomUUID().toString().take(6).uppercase()
+                    runCatching {
+                        val idLocal = (db.pedidoDao().obtenerTodos().maxOfOrNull { it.id } ?: 0) + 1
+                        val pedidoLocal = Pedido(
+                            id = idLocal,
+                            idUsuario = idUsuarioActivo,
+                            fecha = fechaActual,
+                            total = totalCalculado,
+                            modalidadEntrega = "Retiro en ${tienda.comuna}",
+                            estado = "Pendiente de Validación",
+                            numeroPedido = numLocal
+                        )
+                        db.pedidoDao().insertar(pedidoLocal)
+                    }
+
+                    val demo = PedidoDemo(
+                        codigo = numLocal,
+                        fechaMillis = System.currentTimeMillis(),
+                        puntoRetiro = tienda.comuna,
+                        direccionRetiro = "${tienda.direccion} · ${tienda.comuna}",
+                        estado = "Pendiente de Validación",
+                        productos = items.map {
+                            LineaPedidoDemo(
+                                nombre = it.producto.nombre,
+                                formato = it.producto.peso,
+                                precioUnitario = it.producto.precio,
+                                cantidad = it.cantidad
+                            )
+                        },
+                        totalDirecto = totalCalculado.toInt()
+                    )
+                    Pair(demo, "Pedido guardado localmente (servidor no disponible)")
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                cargando = false
+                mensajeUltimoPedido = mensaje
+                _pedidos.add(0, pedidoCreado)
+                onCompletado(pedidoCreado)
+            }
+        }
     }
 
     fun buscar(codigo: String?): PedidoDemo? = _pedidos.find { it.codigo == codigo }
 
     fun limpiarSesion() {
         _pedidos.clear()
-        preferencias.edit().remove("pedidos").apply()
+        mensajeUltimoPedido = null
     }
 
-    private fun guardarPedidos() {
-        val lista = JSONArray()
-        _pedidos.forEach { pedido ->
-            val productosJson = JSONArray()
-            pedido.productos.forEach { producto ->
-                productosJson.put(
-                    JSONObject()
-                        .put("nombre", producto.nombre)
-                        .put("formato", producto.formato)
-                        .put("precioUnitario", producto.precioUnitario)
-                        .put("cantidad", producto.cantidad)
-                )
-            }
-            lista.put(
-                JSONObject()
-                    .put("codigo", pedido.codigo)
-                    .put("fechaMillis", pedido.fechaMillis)
-                    .put("estado", pedido.estado)
-                    .put("puntoRetiro", pedido.puntoRetiro)
-                    .put("direccionRetiro", pedido.direccionRetiro)
-                    .put("productos", productosJson)
-            )
-        }
-        preferencias.edit().putString("pedidos", lista.toString()).apply()
-    }
-
-    private fun recuperarPedidos() {
-        val json = preferencias.getString("pedidos", "[]") ?: "[]"
-        try {
-            val lista = JSONArray(json)
-            val recuperados = mutableListOf<PedidoDemo>()
-
-            for (i in 0 until lista.length()) {
-                val pedidoJson = lista.getJSONObject(i)
-                val productosJson = pedidoJson.getJSONArray("productos")
-                val productos = mutableListOf<LineaPedidoDemo>()
-
-                for (j in 0 until productosJson.length()) {
-                    val productoJson = productosJson.getJSONObject(j)
-                    productos.add(
-                        LineaPedidoDemo(
-                            nombre = productoJson.getString("nombre"),
-                            formato = productoJson.getString("formato"),
-                            precioUnitario = productoJson.getInt("precioUnitario"),
-                            cantidad = productoJson.getInt("cantidad")
-                        )
-                    )
-                }
-
-                recuperados.add(
-                    PedidoDemo(
-                        codigo = pedidoJson.getString("codigo"),
-                        fechaMillis = pedidoJson.getLong("fechaMillis"),
-                        productos = productos,
-                        estado = pedidoJson.optString("estado", "Confirmado"),
-                        puntoRetiro = pedidoJson.optString("puntoRetiro", "Providencia"),
-                        direccionRetiro = pedidoJson.optString("direccionRetiro", "")
-                    )
-                )
-            }
-            _pedidos.addAll(recuperados)
-        } catch (_: JSONException) {
-            // Si los datos locales están dañados, la app sigue funcionando
-            // con la lista vacía; no alteramos la base Room de otros módulos.
-        }
+    private fun Pedido.toDemoModel(): PedidoDemo {
+        val formato = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val fechaMillis = runCatching { formato.parse(fecha)?.time }.getOrNull() ?: System.currentTimeMillis()
+        return PedidoDemo(
+            codigo = numeroPedido,
+            fechaMillis = fechaMillis,
+            puntoRetiro = modalidadEntrega.removePrefix("Retiro en "),
+            direccionRetiro = modalidadEntrega,
+            estado = estado,
+            productos = emptyList(),
+            totalDirecto = total.toInt()
+        )
     }
 }

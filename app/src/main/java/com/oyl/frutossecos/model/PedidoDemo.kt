@@ -16,8 +16,10 @@ data class PedidoDemo(
     val productos: List<LineaPedidoDemo>,
     val estado: String = "Confirmado",
     val puntoRetiro: String = "Providencia",
-    val direccionRetiro: String = "Av. del Almendro 120 · Providencia"
+    val direccionRetiro: String = "Av. del Almendro 120 · Providencia",
+    val totalDirecto: Int? = null,
+    val cantidadBolsasDirecto: Int? = null
 ) {
-    val total: Int get() = productos.sumOf { it.subtotal }
-    val cantidadBolsas: Int get() = productos.sumOf { it.cantidad }
+    val total: Int get() = totalDirecto ?: productos.sumOf { it.subtotal }
+    val cantidadBolsas: Int get() = cantidadBolsasDirecto ?: productos.sumOf { it.cantidad }
 }

@@ -64,6 +64,7 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext,
                 AppDatabase::class.java,
                 NOMBRE_BD
-            ).build()
+            ).fallbackToDestructiveMigration()
+            .build()
     }
 }

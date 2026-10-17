@@ -24,6 +24,14 @@ interface CarritoItemDao {
     @Query("DELETE FROM carrito_items WHERE id = :id")
     fun eliminarItem(id: Int)
 
+    /** Elimina un producto específico del carrito de un cliente. */
+    @Query("DELETE FROM carrito_items WHERE idUsuario = :idUsuario AND idProducto = :idProducto")
+    fun eliminarPorProducto(idUsuario: Int, idProducto: Int)
+
+    /** Busca si un producto ya está en el carrito de un cliente. */
+    @Query("SELECT * FROM carrito_items WHERE idUsuario = :idUsuario AND idProducto = :idProducto LIMIT 1")
+    fun obtenerItem(idUsuario: Int, idProducto: Int): CarritoItem?
+
     /** Vacía por completo el carrito de un cliente. */
     @Query("DELETE FROM carrito_items WHERE idUsuario = :idUsuario")
     fun vaciarCarrito(idUsuario: Int)

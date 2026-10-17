@@ -54,6 +54,7 @@ dependencies {
     //Scanner
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
+    // Mapas nativos OpenStreetMap
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
 
@@ -74,6 +75,12 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
+
+    // Retrofit + Gson (Conexión con API REST Spring Boot)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     // Pruebas y Debug
     testImplementation("junit:junit:4.13.2")

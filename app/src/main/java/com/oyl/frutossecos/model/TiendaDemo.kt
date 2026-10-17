@@ -1,4 +1,3 @@
-
 package com.oyl.frutossecos.model
 
 data class TiendaDemo(
