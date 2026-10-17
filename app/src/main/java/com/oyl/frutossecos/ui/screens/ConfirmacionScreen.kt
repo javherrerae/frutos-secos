@@ -155,7 +155,7 @@ fun ConfirmacionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = mensajeServidor ?: "Pedido conectado con el servidor backend Spring Boot y respaldado en Room SQLite.",
+                text = mensajeServidor ?: "Esta operación es una simulación. No se realizó ningún pago ni se enviaron cobros bancarios.",
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 textAlign = TextAlign.Center,

@@ -375,7 +375,7 @@ fun AppNavigation(
                     onVolver = { pantalla = origenMapa },
                     onSeleccionar = { id ->
                         tiendaId = id
-                        onMensaje("Punto de retiro actualizado.")
+                        onMensaje("Ubicación de referencia actualizada.")
                         pantalla = origenMapa
                     }
                 )

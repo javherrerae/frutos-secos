@@ -104,7 +104,7 @@ fun CatalogoScreen(
             }
 
             TextButton(onClick = onAbrirQR) {
-                Text("QR")
+                Text("Escanear QR")
             }
 
             TextButton(onClick = onAbrirCarrito) {

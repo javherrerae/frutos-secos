@@ -54,6 +54,9 @@ dependencies {
     //Scanner
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
+    // Mapas nativos OpenStreetMap
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
+
 
     // UI Compose & Material 3 (¡Sin dejar espacios vacíos!)
     implementation("androidx.compose.ui:ui")
