@@ -9,7 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.oyl.frutossecos.AppDatabase
 import com.oyl.frutossecos.Producto
-import com.oyl.frutossecos.data.ProductosDemo
+import com.oyl.frutossecos.data.asegurarCatalogoLocal
 import com.oyl.frutossecos.model.Producto as UiProducto
 import com.oyl.frutossecos.repository.ProductoRepository
 import com.oyl.frutossecos.repository.ResultadoSync
@@ -17,13 +17,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * ViewModel que gestiona el catálogo de productos de OYL Frutos Secos.
- * Conecta la pantalla del catálogo con el servidor backend mediante Retrofit
- * y utiliza Room (SQLite) como respaldo local cuando no hay conexión.
+/** Catálogo del cliente. Para la entrega Room es la fuente de datos por defecto.
+ * El método sincronizarConServidor conserva la integración Retrofit para otra etapa.
  */
 class ProductosViewModel(application: Application) : AndroidViewModel(application) {
-
     private val db = AppDatabase.crear(application)
     private val productoDao = db.productoDao()
     private val repository = ProductoRepository(productoDao)
@@ -33,98 +30,74 @@ class ProductosViewModel(application: Application) : AndroidViewModel(applicatio
 
     var cargando by mutableStateOf(false)
         private set
-
     var mensajeEstado by mutableStateOf<String?>(null)
         private set
-
     var esModoOffline by mutableStateOf(false)
         private set
 
-    init {
-        cargarCatalogo()
-    }
+    init { cargarCatalogo() }
 
-    /**
-     * Consulta el catálogo en el servidor Spring Boot y actualiza la base local.
-     * Si el servidor no responde, utiliza los datos de Room o los de demostración.
-     */
+    /** Lectura de Room: respeta altas, bajas lógicas y cambios de stock de admin. */
     fun cargarCatalogo() {
-        cargando = true
-        mensajeEstado = null
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val resultado = repository.sincronizarCatalogo()
-
-            withContext(Dispatchers.Main) {
-                cargando = false
-                when (resultado) {
-                    is ResultadoSync.Exito -> {
-                        esModoOffline = false
-                        mensajeEstado = "Catálogo sincronizado con el servidor"
-                        _productos.clear()
-                        _productos.addAll(resultado.datos.map { it.toUiModel() })
-                    }
-                    is ResultadoSync.DesdeCacheConError -> {
-                        esModoOffline = true
-                        mensajeEstado = "Modo local: datos cargados de caché"
-                        val items = if (resultado.datos.isNotEmpty()) {
-                            resultado.datos.map { it.toUiModel() }
-                        } else {
-                            sembrarDatosDemo()
-                        }
-                        _productos.clear()
-                        _productos.addAll(items)
-                    }
-                    is ResultadoSync.Error -> {
-                        esModoOffline = true
-                        mensajeEstado = "Sin conexión: mostrando productos disponibles"
-                        val items = sembrarDatosDemo()
-                        _productos.clear()
-                        _productos.addAll(items)
-                    }
+        viewModelScope.launch {
+            cargando = true
+            try {
+                val listado = withContext(Dispatchers.IO) {
+                    asegurarCatalogoLocal(productoDao)
+                    productoDao.obtenerCatalogo().map { it.toUiModel() }
                 }
+                _productos.clear()
+                _productos.addAll(listado)
+                esModoOffline = true
+                mensajeEstado = "Catálogo local de este dispositivo"
+            } catch (e: Exception) {
+                mensajeEstado = "No se pudo cargar el catálogo local: ${e.localizedMessage}"
+            } finally {
+                cargando = false
             }
         }
     }
 
-    /**
-     * Inicializa los productos en Room si la app se ejecuta por primera vez sin backend.
+    /** Preparado para una futura entrega con backend; NO llamado automáticamente ahora.
+     * Puede sobrescribir productos locales si se activa sin diseñar sincronización.
      */
-    private suspend fun sembrarDatosDemo(): List<UiProducto> = withContext(Dispatchers.IO) {
-        val entidades = ProductosDemo.productos.map { demo ->
-            Producto(
-                id = demo.id,
-                nombre = demo.nombre,
-                categoria = demo.categoria,
-                descripcion = demo.descripcion,
-                precio = demo.precio.toDouble(),
-                presentacion = demo.peso,
-                stock = demo.stock,
-                rutaImagen = demo.emoji,
-                activo = 1
-            )
+    fun sincronizarConServidor() {
+        viewModelScope.launch {
+            cargando = true
+            try {
+                val resultado = withContext(Dispatchers.IO) {
+                    repository.sincronizarCatalogo()
+                }
+                when (resultado) {
+                    is ResultadoSync.Exito -> {
+                        _productos.clear()
+                        _productos.addAll(resultado.datos.map { it.toUiModel() })
+                        esModoOffline = false
+                        mensajeEstado = "Catálogo actualizado desde el servidor"
+                    }
+                    is ResultadoSync.DesdeCacheConError -> {
+                        cargarCatalogo()
+                    }
+                    is ResultadoSync.Error -> {
+                        mensajeEstado = resultado.mensajeError
+                    }
+                }
+            } catch (e: Exception) {
+                mensajeEstado = "Error de sincronización: ${e.localizedMessage}"
+            } finally {
+                cargando = false
+            }
         }
-        productoDao.insertarSiNoExisten(entidades)
-        ProductosDemo.productos
     }
 
-    /**
-     * Busca un producto por ID dentro de la lista actual.
-     */
-    fun buscarPorId(id: Int): UiProducto? {
-        return _productos.find { it.id == id }
-    }
+    fun buscarPorId(id: Int): UiProducto? = _productos.find { it.id == id }
 
-    /**
-     * Rebaja el stock local de los productos del pedido confirmado
-     * y actualiza la lista visual del catálogo inmediatamente.
-     */
+    /** Conserva la operación original usada cuando se confirman pedidos. */
     fun rebajarStockLocal(items: List<Pair<Int, Int>>) {
         viewModelScope.launch(Dispatchers.IO) {
             items.forEach { (idProducto, cantidad) ->
                 productoDao.rebajarStock(idProducto, cantidad)
             }
-            // Releer los productos actualizados de Room
             val actualizados = productoDao.obtenerCatalogo().map { it.toUiModel() }
             withContext(Dispatchers.Main) {
                 _productos.clear()
@@ -134,9 +107,7 @@ class ProductosViewModel(application: Application) : AndroidViewModel(applicatio
     }
 }
 
-/**
- * Función de extensión que convierte la entidad Room Producto en el modelo visual UiProducto.
- */
+/** Conversión del modelo Room al formato visual de la tienda. */
 fun Producto.toUiModel(): UiProducto {
     val emoji = when {
         nombre.contains("almendra", ignoreCase = true) -> "🥜"

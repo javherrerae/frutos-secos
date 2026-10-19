@@ -24,6 +24,7 @@ import com.oyl.frutossecos.viewmodel.AuthViewModel
 import com.oyl.frutossecos.viewmodel.CarritoViewModel
 import com.oyl.frutossecos.viewmodel.PedidosViewModel
 import com.oyl.frutossecos.viewmodel.ProductosViewModel
+import com.oyl.frutossecos.viewmodel.AdminProductosViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -155,17 +156,97 @@ fun AppNavigation(
                 }
 
                 // PANTALLA 4: DASHBOARD
+
                 "dashboard" -> {
-                    DashboardScreen(
-                        onAbrirCatalogo = { pantalla = "catalogo" },
-                        onAbrirCarrito = { pantalla = "carrito" },
-                        onAbrirPerfil = { pantalla = "perfil" },
-                        onCerrarSesion = cerrarSesion
-                    )
+                    if (usuarioLogueado?.rol?.equals(
+                            "administrador",
+                            ignoreCase = true
+                        ) == true
+                    ) {
+                        AdminDashboardScreen(
+                            onAbrirProductos = {
+                                pantalla = "admin_productos"
+                            },
+                            onAbrirInventario = {
+                                pantalla = "admin_inventario"
+                            },
+                            onAbrirPerfil = {
+                                pantalla = "perfil"
+                            },
+                            onCerrarSesion = cerrarSesion
+                        )
+                    } else {
+                        DashboardScreen(
+                            onAbrirCatalogo = {
+                                pantalla = "catalogo"
+                            },
+                            onAbrirCarrito = {
+                                pantalla = "carrito"
+                            },
+                            onAbrirPerfil = {
+                                pantalla = "perfil"
+                            },
+                            onCerrarSesion = cerrarSesion
+                        )
+                    }
                 }
+
+
+
+                "admin_productos" -> {
+                    if (usuarioLogueado?.rol?.equals(
+                            "administrador",
+                            ignoreCase = true
+                        ) == true
+                    ) {
+                        val vmAdmin: AdminProductosViewModel = viewModel()
+
+                        GestionProductosScreen(
+                            viewModel = vmAdmin,
+                            onVolver = {
+                                pantalla = "dashboard"
+                            }
+                        )
+                    } else {
+                        PantallaPendiente(
+                            titulo = "Acceso restringido",
+                            onVolver = {
+                                pantalla = "dashboard"
+                            }
+                        )
+                    }
+                }
+                // pantalla de inventario
+                "admin_inventario" -> {
+                    if (usuarioLogueado?.rol?.equals(
+                            "administrador",
+                            ignoreCase = true
+                        ) == true
+                    ) {
+                        val vmAdmin: AdminProductosViewModel = viewModel()
+
+                        InventarioScreen(
+                            viewModel = vmAdmin,
+                            onVolver = {
+                                pantalla = "dashboard"
+                            }
+                        )
+                    } else {
+                        PantallaPendiente(
+                            titulo = "Acceso restringido",
+                            onVolver = {
+                                pantalla = "dashboard"
+                            }
+                        )
+                    }
+                }
+
 
                 // PANTALLA 5: CATÁLOGO CONECTADO A LA API REST (PRODUCTOS VIEWMODEL)
                 "catalogo" -> {
+                    LaunchedEffect(Unit) {
+                        productosViewModel.cargarCatalogo()
+                    }
                     CatalogoScreen(
                         onVolver = { pantalla = "dashboard" },
                         productos = productosViewModel.productos,
