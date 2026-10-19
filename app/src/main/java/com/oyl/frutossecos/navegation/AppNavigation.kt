@@ -244,6 +244,9 @@ fun AppNavigation(
 
                 // PANTALLA 5: CATÁLOGO CONECTADO A LA API REST (PRODUCTOS VIEWMODEL)
                 "catalogo" -> {
+                    LaunchedEffect(Unit) {
+                        productosViewModel.cargarCatalogo()
+                    }
                     CatalogoScreen(
                         onVolver = { pantalla = "dashboard" },
                         productos = productosViewModel.productos,
