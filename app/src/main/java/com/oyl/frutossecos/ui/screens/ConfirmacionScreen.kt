@@ -1,7 +1,10 @@
 
 package com.oyl.frutossecos.ui.screens
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -11,9 +14,20 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,23 +63,8 @@ fun ConfirmacionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Indicador visual de éxito
-            Box(
-                modifier = Modifier
-                    .size(110.dp)
-                    .background(
-                        VerdeConfirmacion,
-                        RoundedCornerShape(55.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "✓",
-                    color = Color.White,
-                    fontSize = 64.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            // Se anima al entrar a la confirmación; no se repite en bucle.
+            IndicadorPedidoAnimado(codigoPedido = codigoPedido)
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -186,6 +185,56 @@ fun ConfirmacionScreen(
                     fontSize = 16.sp
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun IndicadorPedidoAnimado(codigoPedido: String?) {
+    // La vista previa muestra el resultado final. Un pedido distinto inicia otra animación.
+    val enVistaPrevia = LocalInspectionMode.current
+    val progreso = remember(codigoPedido) {
+        Animatable(if (enVistaPrevia) 1f else 0f)
+    }
+
+    LaunchedEffect(codigoPedido) {
+        if (!enVistaPrevia) {
+            progreso.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing)
+            )
+        }
+    }
+
+    Canvas(
+        modifier = Modifier
+            .size(110.dp)
+            .semantics { contentDescription = "Pedido registrado" }
+            .graphicsLayer {
+                // El círculo aparece primero, sin desplazar el resto de la pantalla.
+                val entrada = (progreso.value / 0.35f).coerceIn(0f, 1f)
+                alpha = entrada
+                scaleX = 0.8f + 0.2f * entrada
+                scaleY = scaleX
+            }
+    ) {
+        drawCircle(color = VerdeConfirmacion)
+
+        val trazo = ((progreso.value - 0.25f) / 0.75f).coerceIn(0f, 1f)
+        if (trazo > 0f) {
+            val marca = Path().apply {
+                moveTo(size.width * 0.28f, size.height * 0.51f)
+                lineTo(size.width * 0.44f, size.height * 0.67f)
+                lineTo(size.width * 0.73f, size.height * 0.35f)
+            }
+            val medida = PathMeasure().apply { setPath(marca, false) }
+            val segmento = Path()
+            medida.getSegment(0f, medida.length * trazo, segmento, true)
+            drawPath(
+                path = segmento,
+                color = Color.White,
+                style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
         }
     }
 }

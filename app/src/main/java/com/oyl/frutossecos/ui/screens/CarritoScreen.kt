@@ -1,6 +1,8 @@
 
 package com.oyl.frutossecos.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -371,11 +377,32 @@ private fun FilaPrecio(
             color = GrafitoCarrito
         )
 
-        Text(
-            text = precio,
-            fontSize = if (destacado) 15.sp else 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (destacado) VerdeCarrito else GrafitoCarrito
-        )
+        if (destacado) {
+            // Solo anima el total visible. El cálculo y la confirmación usan el importe actual.
+            Crossfade(
+                targetState = precio,
+                animationSpec = tween(durationMillis = 250),
+                label = "Cambio del total del carrito",
+                modifier = Modifier.clearAndSetSemantics {
+                    // El lector de pantalla anuncia el valor actual, sin duplicar los importes.
+                    contentDescription = "$etiqueta: $precio"
+                    liveRegion = LiveRegionMode.Polite
+                }
+            ) { importe ->
+                Text(
+                    text = importe,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = VerdeCarrito
+                )
+            }
+        } else {
+            Text(
+                text = precio,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = GrafitoCarrito
+            )
+        }
     }
 }
