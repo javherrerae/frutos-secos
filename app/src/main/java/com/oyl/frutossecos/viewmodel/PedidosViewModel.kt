@@ -1,181 +1,93 @@
 package com.oyl.frutossecos.viewmodel
 
 import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.oyl.frutossecos.AppDatabase
 import com.oyl.frutossecos.Pedido
-import com.oyl.frutossecos.dto.CrearPedidoRequest
-import com.oyl.frutossecos.dto.PedidoItemDto
-import com.oyl.frutossecos.model.ItemCarrito
-import com.oyl.frutossecos.model.LineaPedidoDemo
-import com.oyl.frutossecos.model.PedidoDemo
-import com.oyl.frutossecos.model.TiendaDemo
-import com.oyl.frutossecos.model.TiendasDemo
+import com.oyl.frutossecos.dto.*
+import com.oyl.frutossecos.model.*
 import com.oyl.frutossecos.repository.PedidoRepository
 import com.oyl.frutossecos.repository.ResultadoSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-/**
- * ViewModel que gestiona el ciclo de vida de los pedidos.
- * Conecta la confirmación y consulta de pedidos con la API REST de Spring Boot
- * a través de PedidoRepository, guardando una copia en Room (SQLite).
- */
 class PedidosViewModel(application: Application) : AndroidViewModel(application) {
-
     private val db = AppDatabase.crear(application)
     private val repository = PedidoRepository(db.pedidoDao(), db.pedidoItemDao())
-
     private val _pedidos = mutableStateListOf<PedidoDemo>()
     val pedidos: List<PedidoDemo> get() = _pedidos.toList()
-
     var cargando by mutableStateOf(false)
         private set
-
     var mensajeUltimoPedido by mutableStateOf<String?>(null)
         private set
-
-    var idUsuarioActivo: Int = 1
+    private var idUsuarioActivo: Int = 0
+    private var ultimaSolicitud: CrearPedidoRequest? = null
+    private var claveOperacion: String = UUID.randomUUID().toString()
 
     fun configurarUsuario(idUsuario: Int) {
         idUsuarioActivo = idUsuario
-        cargarPedidos(idUsuario)
+        cargarPedidos()
     }
 
-    /**
-     * Consulta los pedidos del usuario en el servidor backend (o Room si offline).
-     */
     fun cargarPedidos(idUsuario: Int = idUsuarioActivo) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val resultado = repository.obtenerPorUsuario(idUsuario)
-            withContext(Dispatchers.Main) {
-                when (resultado) {
-                    is ResultadoSync.Exito -> {
-                        _pedidos.clear()
-                        _pedidos.addAll(resultado.datos.map { it.toDemoModel() })
-                    }
-                    is ResultadoSync.DesdeCacheConError -> {
-                        _pedidos.clear()
-                        _pedidos.addAll(resultado.datos.map { it.toDemoModel() })
-                    }
-                    is ResultadoSync.Error -> {
-                        // Mantener los que ya estén en memoria
-                    }
+        if (idUsuario <= 0) return
+        viewModelScope.launch {
+            val listado = withContext(Dispatchers.IO) {
+                when (val resultado = repository.obtenerPorUsuario(idUsuario)) {
+                    is ResultadoSync.Exito -> resultado.datos.map { convertir(it) }
+                    is ResultadoSync.DesdeCacheConError -> resultado.datos.map { convertir(it) }
+                    is ResultadoSync.Error -> emptyList()
                 }
             }
+            _pedidos.clear()
+            _pedidos.addAll(listado)
         }
     }
 
-    /**
-     * Confirma el pedido enviándolo a la API REST de Spring Boot.
-     * Si el servidor no responde, lo guarda localmente en Room con estado inicial.
-     */
-    fun confirmar(
-        items: List<ItemCarrito>,
-        tienda: TiendaDemo = TiendasDemo.todas.first(),
-        onCompletado: (PedidoDemo?) -> Unit
-    ) {
-        if (items.isEmpty() || items.any {
-                it.cantidad <= 0 || it.cantidad > it.producto.stock || it.producto.precio < 0
-            }) {
+    fun confirmar(items: List<ItemCarrito>, tienda: TiendaDemo = TiendasDemo.todas.first(),
+            onCompletado: (PedidoDemo?) -> Unit) {
+        if (cargando) return
+        if (idUsuarioActivo <= 0 || items.isEmpty() || items.any { it.cantidad <= 0 }) {
+            mensajeUltimoPedido = "Inicia sesión y revisa el carrito."
             onCompletado(null)
             return
         }
-
-        cargando = true
-        val totalCalculado = items.sumOf { it.subtotal }.toDouble()
-        val formatoFecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val fechaActual = formatoFecha.format(Date())
-
         val request = CrearPedidoRequest(
-            idUsuario = idUsuarioActivo,
-            modalidadEntrega = "Retiro en ${tienda.comuna}",
-            items = items.map {
-                PedidoItemDto(
-                    idProducto = it.producto.id,
-                    nombreProducto = it.producto.nombre,
-                    cantidad = it.cantidad,
-                    precioUnitario = it.producto.precio.toDouble()
-                )
-            }
+            idUsuarioActivo, "Retiro en ${tienda.comuna}",
+            items.map { PedidoItemDto(idProducto = it.producto.id, nombreProducto = it.producto.nombre,
+                cantidad = it.cantidad, precioUnitario = it.producto.precio.toDouble()) }
         )
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val resultado = repository.crearPedido(request)
-
-            val (pedidoCreado, mensaje) = when (resultado) {
-                is ResultadoSync.Exito -> {
-                    val entity = resultado.datos
-                    val demo = PedidoDemo(
-                        codigo = entity.numeroPedido,
-                        fechaMillis = System.currentTimeMillis(),
-                        puntoRetiro = tienda.comuna,
-                        direccionRetiro = "${tienda.direccion} · ${tienda.comuna}",
-                        estado = entity.estado,
-                        productos = items.map {
-                            LineaPedidoDemo(
-                                nombre = it.producto.nombre,
-                                formato = it.producto.peso,
-                                precioUnitario = it.producto.precio,
-                                cantidad = it.cantidad
-                            )
+        if (ultimaSolicitud != request) {
+            ultimaSolicitud = request
+            claveOperacion = UUID.randomUUID().toString()
+        }
+        cargando = true
+        viewModelScope.launch {
+            try {
+                val pedido = withContext(Dispatchers.IO) {
+                    when (val resultado = repository.crearPedido(request, claveOperacion)) {
+                        is ResultadoSync.Exito -> convertir(resultado.datos)
+                        is ResultadoSync.Error -> {
+                            mensajeUltimoPedido = resultado.mensajeError
+                            null
                         }
-                    )
-                    Pair(demo, "¡Pedido enviado y registrado en el servidor central!")
-                }
-                else -> {
-                    // Fallback offline a Room ejecutado de forma segura en Dispatchers.IO
-                    val numLocal = "OYL-PED-" + UUID.randomUUID().toString().take(6).uppercase()
-                    runCatching {
-                        val idLocal = (db.pedidoDao().obtenerTodos().maxOfOrNull { it.id } ?: 0) + 1
-                        val pedidoLocal = Pedido(
-                            id = idLocal,
-                            idUsuario = idUsuarioActivo,
-                            fecha = fechaActual,
-                            total = totalCalculado,
-                            modalidadEntrega = "Retiro en ${tienda.comuna}",
-                            estado = "Pendiente de Validación",
-                            numeroPedido = numLocal
-                        )
-                        db.pedidoDao().insertar(pedidoLocal)
+                        is ResultadoSync.DesdeCacheConError -> null
                     }
-
-                    val demo = PedidoDemo(
-                        codigo = numLocal,
-                        fechaMillis = System.currentTimeMillis(),
-                        puntoRetiro = tienda.comuna,
-                        direccionRetiro = "${tienda.direccion} · ${tienda.comuna}",
-                        estado = "Pendiente de Validación",
-                        productos = items.map {
-                            LineaPedidoDemo(
-                                nombre = it.producto.nombre,
-                                formato = it.producto.peso,
-                                precioUnitario = it.producto.precio,
-                                cantidad = it.cantidad
-                            )
-                        },
-                        totalDirecto = totalCalculado.toInt()
-                    )
-                    Pair(demo, "Pedido guardado localmente (servidor no disponible)")
                 }
-            }
-
-            withContext(Dispatchers.Main) {
-                cargando = false
-                mensajeUltimoPedido = mensaje
-                _pedidos.add(0, pedidoCreado)
-                onCompletado(pedidoCreado)
-            }
+                if (pedido != null) {
+                    mensajeUltimoPedido = "Pedido confirmado por el servidor."
+                    _pedidos.removeAll { it.codigo == pedido.codigo }
+                    _pedidos.add(0, pedido)
+                    ultimaSolicitud = null
+                }
+                onCompletado(pedido)
+            } finally { cargando = false }
         }
     }
 
@@ -183,20 +95,20 @@ class PedidosViewModel(application: Application) : AndroidViewModel(application)
 
     fun limpiarSesion() {
         _pedidos.clear()
+        idUsuarioActivo = 0
+        ultimaSolicitud = null
         mensajeUltimoPedido = null
     }
 
-    private fun Pedido.toDemoModel(): PedidoDemo {
-        val formato = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val fechaMillis = runCatching { formato.parse(fecha)?.time }.getOrNull() ?: System.currentTimeMillis()
-        return PedidoDemo(
-            codigo = numeroPedido,
-            fechaMillis = fechaMillis,
-            puntoRetiro = modalidadEntrega.removePrefix("Retiro en "),
-            direccionRetiro = modalidadEntrega,
-            estado = estado,
-            productos = emptyList(),
-            totalDirecto = total.toInt()
-        )
+    private fun convertir(pedido: Pedido): PedidoDemo {
+        val fecha = runCatching {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(pedido.fecha)?.time
+        }.getOrNull() ?: System.currentTimeMillis()
+        val lineas = db.pedidoItemDao().obtenerPorPedido(pedido.id).map {
+            LineaPedidoDemo(it.nombreProducto, "", it.precioUnitario.toInt(), it.cantidad)
+        }
+        return PedidoDemo(pedido.numeroPedido, fecha, lineas, pedido.estado,
+            pedido.modalidadEntrega.removePrefix("Retiro en "), pedido.modalidadEntrega,
+            totalDirecto = pedido.total.toInt())
     }
 }

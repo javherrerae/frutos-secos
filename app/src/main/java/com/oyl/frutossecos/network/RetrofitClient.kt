@@ -3,6 +3,7 @@ package com.oyl.frutossecos.network
 import com.oyl.frutossecos.api.AuthApi
 import com.oyl.frutossecos.api.PedidoApi
 import com.oyl.frutossecos.api.ProductoApi
+import com.oyl.frutossecos.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -24,7 +25,7 @@ object RetrofitClient {
      * IP y puerto base del servidor backend.
      * Se configura por defecto con la IP de tu PC en la red local Wi-Fi.
      */
-    var BASE_URL = "http://192.168.1.94:8080/"
+    var BASE_URL = BuildConfig.BACKEND_URL
         private set
 
     /** Token de sesión activo. Se establece tras un login exitoso. */
@@ -36,8 +37,11 @@ object RetrofitClient {
      */
     private val interceptorAutenticacion = Interceptor { cadena ->
         val constructorPeticion = cadena.request().newBuilder()
-        tokenSesion?.let { token ->
-            constructorPeticion.addHeader("Authorization", "Bearer $token")
+        val ruta = cadena.request().url.encodedPath
+        if (ruta != "/api/auth/login" && ruta != "/api/auth/registro") {
+            tokenSesion?.let { token ->
+                constructorPeticion.addHeader("Authorization", "Bearer $token")
+            }
         }
         cadena.proceed(constructorPeticion.build())
     }
@@ -46,7 +50,8 @@ object RetrofitClient {
      * Interceptor de logging para depuración en Logcat.
      */
     private val interceptorLog = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        redactHeader("Authorization")
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     /**

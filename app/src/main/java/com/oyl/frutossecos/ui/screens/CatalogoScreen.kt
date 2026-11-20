@@ -38,7 +38,7 @@ fun CatalogoScreen(
     onAbrirProducto: (Producto) -> Unit,
     onAbrirCarrito: () -> Unit,
     onAbrirQR: () -> Unit,
-    productos: List<Producto> = ProductosDemo.productos,
+    productos: List<Producto> = emptyList(),
     cargando: Boolean = false,
     mensajeEstado: String? = null,
     onRefrescar: () -> Unit = {}
@@ -48,14 +48,9 @@ fun CatalogoScreen(
         mutableStateOf("Todos")
     }
 
-    val categorias = listOf(
-        "Todos",
-        "Frutos secos",
-        "Semillas",
-        "Frutas deshidratadas"
-    )
+    val categorias = listOf("Todos") + productos.map { it.categoria.trim() }.distinct().sorted()
 
-    val listaBase = if (productos.isNotEmpty()) productos else ProductosDemo.productos
+    val listaBase = productos
     val productosFiltrados = listaBase.filter {
         val coincideBusqueda =
             it.nombre.contains(busqueda, ignoreCase = true) ||
@@ -63,7 +58,7 @@ fun CatalogoScreen(
 
         val coincideCategoria =
             categoriaSeleccionada == "Todos" ||
-                    it.categoria == categoriaSeleccionada
+                    it.categoria.trim().equals(categoriaSeleccionada, ignoreCase = true)
 
         coincideBusqueda && coincideCategoria
     }

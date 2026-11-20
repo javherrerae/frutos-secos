@@ -40,36 +40,9 @@ private val CremaOYL = Color(0xFFF4EBDD)
 private val CarameloOYL = Color(0xFFC58B52)
 private val GrafitoOYL = Color(0xFF292D26)
 
-private data class ProductoDestacado(
-    val nombre: String,
-    val descripcion: String,
-    val precio: Int,
-    val emoji: String
-)
-
-private val productosDemo = listOf(
-    ProductoDestacado(
-        "Almendras",
-        "Bolsa de 250 g",
-        3490,
-        "🥜"
-    ),
-    ProductoDestacado(
-        "Nueces",
-        "Bolsa de 250 g",
-        4290,
-        "🌰"
-    ),
-    ProductoDestacado(
-        "Mix natural",
-        "Bolsa de 300 g",
-        3990,
-        "🥣"
-    )
-)
-
 @Composable
 fun DashboardScreen(
+    productos: List<com.oyl.frutossecos.model.Producto> = emptyList(),
     onAbrirCatalogo: () -> Unit,
     onAbrirCarrito: () -> Unit,
     onAbrirPerfil: () -> Unit,
@@ -244,7 +217,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            productosDemo.forEach { producto ->
+            productos.take(3).forEach { producto ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

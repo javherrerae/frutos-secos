@@ -33,17 +33,19 @@ class CarritoViewModel(application: Application) : AndroidViewModel(application)
      * Establece el usuario activo y recarga su carrito persistente desde SQLite.
      */
     fun configurarUsuario(idUsuario: Int) {
+        _items.clear()
         idUsuarioActual = idUsuario
         cargarCarritoDesdeBase()
     }
 
     private fun cargarCarritoDesdeBase() {
+        val usuario = idUsuarioActual
         viewModelScope.launch(Dispatchers.IO) {
-            val itemsLocal = repository.obtenerCarrito(idUsuarioActual)
+            val itemsLocal = repository.obtenerCarrito(usuario)
             val productoDao = db.productoDao()
             val lista = itemsLocal.mapNotNull { itemEntity ->
                 val pEntity = productoDao.obtenerPorId(itemEntity.idProducto)
-                if (pEntity != null) {
+                if (pEntity != null && pEntity.activo == 1) {
                     ItemCarrito(
                         producto = pEntity.toUiModel(),
                         cantidad = itemEntity.cantidad
@@ -51,7 +53,7 @@ class CarritoViewModel(application: Application) : AndroidViewModel(application)
                 } else null
             }
             launch(Dispatchers.Main) {
-                if (lista.isNotEmpty()) {
+                if (idUsuarioActual == usuario) {
                     _items.clear()
                     _items.addAll(lista)
                 }
@@ -111,20 +113,23 @@ class CarritoViewModel(application: Application) : AndroidViewModel(application)
 
     fun vaciarCarrito() {
         _items.clear()
+        val usuario = idUsuarioActual
         viewModelScope.launch(Dispatchers.IO) {
-            repository.vaciarCarrito(idUsuarioActual)
+            repository.vaciarCarrito(usuario)
         }
     }
 
     private fun persistirItem(idProducto: Int, cantidad: Int, precioUnitario: Double) {
+        val usuario = idUsuarioActual
         viewModelScope.launch(Dispatchers.IO) {
-            repository.guardarOActualizar(idUsuarioActual, idProducto, cantidad, precioUnitario)
+            repository.guardarOActualizar(usuario, idProducto, cantidad, precioUnitario)
         }
     }
 
     private fun eliminarDeBase(idProducto: Int) {
+        val usuario = idUsuarioActual
         viewModelScope.launch(Dispatchers.IO) {
-            repository.eliminarProducto(idUsuarioActual, idProducto)
+            repository.eliminarProducto(usuario, idProducto)
         }
     }
 

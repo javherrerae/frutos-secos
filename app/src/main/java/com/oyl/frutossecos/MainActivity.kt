@@ -4,6 +4,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +24,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -65,6 +72,18 @@ fun PantallaBienvenida(
     onLogin: () -> Unit,
     onRegistro: () -> Unit
 ) {
+    // Se ejecuta una vez al entrar en bienvenida, sin animaciones en bucle.
+    val enVistaPrevia = LocalInspectionMode.current
+    val entrada = remember { Animatable(if (enVistaPrevia) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (!enVistaPrevia) {
+            entrada.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 850, easing = FastOutSlowInEasing)
+            )
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = CremaOYL
@@ -88,6 +107,13 @@ fun PantallaBienvenida(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        val progreso = (entrada.value / 0.65f).coerceIn(0f, 1f)
+                        alpha = progreso
+                        scaleX = 0.92f + 0.08f * progreso
+                        scaleY = scaleX
+                        translationY = 20.dp.toPx() * (1f - progreso)
+                    }
                     .background(
                         color = VerdeOYL,
                         shape = RoundedCornerShape(28.dp)
@@ -122,6 +148,12 @@ fun PantallaBienvenida(
             // Mensaje principal
             Text(
                 text = "¡Naturalmente buenos!",
+                modifier = Modifier.graphicsLayer {
+                    // El mensaje entra después del logo sin alterar el espacio de los botones.
+                    val progreso = ((entrada.value - 0.3f) / 0.7f).coerceIn(0f, 1f)
+                    alpha = progreso
+                    translationY = 12.dp.toPx() * (1f - progreso)
+                },
                 color = VerdeOYL,
                 fontSize = 27.sp,
                 fontWeight = FontWeight.Bold,

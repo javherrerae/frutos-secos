@@ -23,16 +23,16 @@ class PedidoRepository(
     private val pedidoItemDao: PedidoItemDao
 ) {
 
-    private val api = RetrofitClient.pedidoApi
+    private val api get() = RetrofitClient.pedidoApi
 
     /**
      * Crea un nuevo pedido en el servidor.
      * El backend calcula totales, asigna estado inicial y rebaja el stock.
      * Si tiene éxito, almacena una copia local del pedido.
      */
-    suspend fun crearPedido(request: CrearPedidoRequest): ResultadoSync<Pedido> {
+    suspend fun crearPedido(request: CrearPedidoRequest, operacion: String): ResultadoSync<Pedido> {
         return try {
-            val respuesta = api.crearPedido(request)
+            val respuesta = api.crearPedido(request, operacion)
             if (respuesta.isSuccessful && respuesta.body() != null) {
                 val pedidoDto = respuesta.body()!!
                 val pedidoLocal = pedidoDto.toEntity()
@@ -43,7 +43,7 @@ class PedidoRepository(
                 }
                 ResultadoSync.Exito(pedidoLocal)
             } else {
-                ResultadoSync.Error("No se pudo crear el pedido: ${respuesta.code()} ${respuesta.message()}")
+                ResultadoSync.Error(respuesta.mensajeError())
             }
         } catch (e: Exception) {
             ResultadoSync.Error("Sin conexión al servidor: ${e.localizedMessage}")
@@ -59,7 +59,10 @@ class PedidoRepository(
             val respuesta = api.obtenerTodos()
             if (respuesta.isSuccessful && respuesta.body() != null) {
                 val pedidos = respuesta.body()!!.map { it.toEntity() }
-                pedidoDao.insertarSiNoExisten(pedidos)
+                pedidos.forEach { pedidoDao.insertar(it) }
+                respuesta.body()!!.forEach { dto ->
+                    dto.items?.let { pedidoItemDao.insertarSiNoExisten(it.map { item -> item.toEntity() }) }
+                }
                 ResultadoSync.Exito(pedidos)
             } else {
                 val cache = pedidoDao.obtenerTodos()
@@ -79,7 +82,10 @@ class PedidoRepository(
             val respuesta = api.obtenerPorUsuario(idUsuario)
             if (respuesta.isSuccessful && respuesta.body() != null) {
                 val pedidos = respuesta.body()!!.map { it.toEntity() }
-                pedidoDao.insertarSiNoExisten(pedidos)
+                pedidos.forEach { pedidoDao.insertar(it) }
+                respuesta.body()!!.forEach { dto ->
+                    dto.items?.let { pedidoItemDao.insertarSiNoExisten(it.map { item -> item.toEntity() }) }
+                }
                 ResultadoSync.Exito(pedidos)
             } else {
                 val cache = pedidoDao.obtenerPorUsuario(idUsuario)

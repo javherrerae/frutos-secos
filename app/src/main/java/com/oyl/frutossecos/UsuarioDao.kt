@@ -13,6 +13,9 @@ import androidx.room.Update
 @Dao
 interface UsuarioDao {
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun guardar(usuario: Usuario)
+
     /** Inserta los usuarios iniciales que no existan previamente. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertarSiNoExisten(usuarios: List<Usuario>)
