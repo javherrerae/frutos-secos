@@ -11,6 +11,9 @@ import androidx.room.Transaction
 @Dao
 interface ProductoDao {
 
+    @Query("SELECT COUNT(*) FROM productos")
+    fun contarTodos(): Int
+
     @Query("UPDATE productos SET activo = 0")
     fun desactivarCache()
 
