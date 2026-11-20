@@ -1,7 +1,5 @@
-
 package com.oyl.frutossecos.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,27 +10,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oyl.frutossecos.Usuario
+import com.oyl.frutossecos.viewmodel.AuthViewModel
 
 private val VerdeOYL = Color(0xFF456747)
 private val CremaOYL = Color(0xFFF4EBDD)
@@ -41,16 +46,11 @@ private val GrafitoOYL = Color(0xFF292D26)
 @Composable
 fun LoginScreen(
     onVolver: () -> Unit,
-    onIngresar: (String, String) -> Unit,
-    cargando: Boolean = false,
-    mensajeError: String? = null
+    onIngresarExitoso: (Usuario) -> Unit,
+    viewModel: AuthViewModel
 ) {
-    var correo by rememberSaveable { mutableStateOf("") }
-    var clave by rememberSaveable { mutableStateOf("") }
-
-    val correoValido = correo.trim().isNotEmpty()
-
-    val claveError = clave.isNotBlank() && clave.length < 6
+    // Obtenemos los valores y los errores directamente del ViewModel
+    val estado by viewModel.loginState.collectAsState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -83,43 +83,75 @@ fun LoginScreen(
                 color = GrafitoOYL
             )
 
+            // Input para usuario o correo
             OutlinedTextField(
-                value = correo,
-                onValueChange = { correo = it },
+                value = estado.identificador,
+                onValueChange = { viewModel.onLoginIdentificadorChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Correo electrónico o alias") },
                 singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null,
+                        tint = VerdeOYL
+                    )
+                },
+                isError = estado.errores.identificador != null,
+                supportingText = {
+                    estado.errores.identificador?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // Input para la contraseña con botón para ver u ocultar
             OutlinedTextField(
-                value = clave,
-                onValueChange = { clave = it },
+                value = estado.clave,
+                onValueChange = { viewModel.onLoginClaveChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Contraseña") },
                 singleLine = true,
-                isError = claveError,
-                supportingText = {
-                    if (claveError) {
-                        Text("Debe tener al menos 6 caracteres.")
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = VerdeOYL
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.alternarVisibilidadClaveLogin() }) {
+                        Icon(
+                            imageVector = if (estado.claveVisible) Icons.Default.Info else Icons.Default.Lock,
+                            contentDescription = if (estado.claveVisible) "Ocultar clave" else "Mostrar clave",
+                            tint = if (estado.claveVisible) VerdeOYL else Color.Gray
+                        )
                     }
                 },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (estado.claveVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                isError = estado.errores.clave != null,
+                supportingText = {
+                    estado.errores.clave?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
 
-            if (mensajeError != null) {
+            // Mensaje en caso de credenciales incorrectas
+            if (estado.mensajeErrorGeneral != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = mensajeError,
+                    text = estado.mensajeErrorGeneral!!,
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 13.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -129,8 +161,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { onIngresar(correo.trim(), clave.trim()) },
-                enabled = correoValido && clave.length >= 6 && !cargando,
+                onClick = { viewModel.iniciarSesion(onExito = onIngresarExitoso) },
+                enabled = estado.esValido && !estado.cargando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -138,7 +170,7 @@ fun LoginScreen(
                     containerColor = VerdeOYL
                 )
             ) {
-                if (cargando) {
+                if (estado.cargando) {
                     CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.size(24.dp),
