@@ -21,11 +21,10 @@ import com.oyl.frutossecos.repository.AuthRepository
 import com.oyl.frutossecos.repository.ResultadoSync
 import com.oyl.frutossecos.ui.components.BottomNavigationBar
 import com.oyl.frutossecos.ui.screens.*
-import com.oyl.frutossecos.viewmodel.AuthViewModel
+import com.oyl.frutossecos.viewmodel.AdminProductosViewModel
 import com.oyl.frutossecos.viewmodel.CarritoViewModel
 import com.oyl.frutossecos.viewmodel.PedidosViewModel
 import com.oyl.frutossecos.viewmodel.ProductosViewModel
-import com.oyl.frutossecos.viewmodel.AdminProductosViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,11 +51,16 @@ fun AppNavigation(
     val productosViewModel: ProductosViewModel = viewModel()
     val carritoViewModel: CarritoViewModel = viewModel()
     val pedidosViewModel: PedidosViewModel = viewModel()
-    val authViewModel: AuthViewModel = viewModel()
 
     // Estado del usuario activo autenticado
     var usuarioLogueado by remember { mutableStateOf<Usuario?>(null) }
     var estadoConexion by remember { mutableStateOf("Conectado al servidor") }
+
+    // Estados de autenticación (login y registro)
+    var loginCargando by remember { mutableStateOf(false) }
+    var loginError by remember { mutableStateOf<String?>(null) }
+    var registroCargando by remember { mutableStateOf(false) }
+    var registroError by remember { mutableStateOf<String?>(null) }
 
     var codigoPedido by rememberSaveable { mutableStateOf<String?>(null) }
     var totalConfirmado by rememberSaveable { mutableIntStateOf(0) }
@@ -70,7 +74,9 @@ fun AppNavigation(
     val tiendaActual = TiendasDemo.buscar(tiendaId)
 
     val cerrarSesion: () -> Unit = {
-        authViewModel.cerrarSesion()
+        coroutineScope.launch(Dispatchers.IO) {
+            authRepository.cerrarSesion()
+        }
         carritoViewModel.vaciarCarrito()
         pedidosViewModel.limpiarSesion()
         usuarioLogueado = null
@@ -82,6 +88,8 @@ fun AppNavigation(
         avisosPerfil = true
         tiendaId = "providencia"
         origenMapa = "perfil"
+        loginError = null
+        registroError = null
         pantalla = "inicio"
     }
 
@@ -113,51 +121,112 @@ fun AppNavigation(
                 "inicio" -> {
                     PantallaBienvenida(
                         onLogin = {
+                            loginError = null
                             pantalla = "login"
                         },
                         onRegistro = {
+                            registroError = null
                             pantalla = "registro"
                         }
                     )
                 }
 
-                // Pantalla de Login conectada al ViewModel
+                // PANTALLA 2: LOGIN CONECTADO A LA API / AUTH REPOSITORY
                 "login" -> {
                     LoginScreen(
                         onVolver = {
+                            loginError = null
                             pantalla = "inicio"
                         },
-                        onIngresarExitoso = { usuario ->
-                            usuarioLogueado = usuario
-                            nombrePerfil = usuario.nombre
-                            correoPerfil = usuario.correo
-                            telefonoPerfil = usuario.telefono
-                            estadoConexion = if (usuario.rol == "administrador") "Administrador conectado" else "Conectado al servidor"
-                            carritoViewModel.configurarUsuario(usuario.id)
-                            pedidosViewModel.configurarUsuario(usuario.id)
-                            onMensaje("¡Bienvenido/a, ${usuario.nombre}!")
-                            pantalla = "dashboard"
-                        },
-                        viewModel = authViewModel
+                        cargando = loginCargando,
+                        mensajeError = loginError,
+                        onIngresar = { credencial, clave ->
+                            loginCargando = true
+                            loginError = null
+                            coroutineScope.launch {
+                                val resultado = withContext(Dispatchers.IO) {
+                                    authRepository.login(credencial, clave)
+                                }
+                                loginCargando = false
+                                when (resultado) {
+                                    is ResultadoSync.Exito -> {
+                                        val usuario = resultado.datos
+                                        usuarioLogueado = usuario
+                                        nombrePerfil = usuario.nombre
+                                        correoPerfil = usuario.correo
+                                        telefonoPerfil = usuario.telefono
+                                        estadoConexion = "Conectado al servidor central"
+                                        carritoViewModel.configurarUsuario(usuario.id)
+                                        pedidosViewModel.configurarUsuario(usuario.id)
+                                        onMensaje("¡Bienvenido/a, ${usuario.nombre}!")
+                                        pantalla = "dashboard"
+                                    }
+                                    is ResultadoSync.DesdeCacheConError -> {
+                                        val usuario = resultado.datos
+                                        usuarioLogueado = usuario
+                                        nombrePerfil = usuario.nombre
+                                        correoPerfil = usuario.correo
+                                        telefonoPerfil = usuario.telefono
+                                        estadoConexion = "Modo sin conexión (datos locales)"
+                                        carritoViewModel.configurarUsuario(usuario.id)
+                                        pedidosViewModel.configurarUsuario(usuario.id)
+                                        onMensaje("Sesión offline iniciada: ${usuario.nombre}")
+                                        pantalla = "dashboard"
+                                    }
+                                    is ResultadoSync.Error -> {
+                                        loginError = resultado.mensajeError
+                                    }
+                                }
+                            }
+                        }
                     )
                 }
 
-                // Pantalla de Registro conectada al ViewModel
+                // PANTALLA 3: REGISTRO CONECTADO A LA API / AUTH REPOSITORY
                 "registro" -> {
                     RegisterScreen(
                         onVolver = {
+                            registroError = null
                             pantalla = "inicio"
                         },
-                        onRegistroExitoso = { usuario ->
-                            onMensaje("¡Cuenta registrada con éxito!")
-                            pantalla = "login"
-                        },
-                        viewModel = authViewModel
+                        cargando = registroCargando,
+                        mensajeError = registroError,
+                        onRegistrar = { nombre, correo, clave ->
+                            registroCargando = true
+                            registroError = null
+                            coroutineScope.launch {
+                                val aliasGenerado = correo.substringBefore("@").lowercase()
+                                val request = RegistroRequest(
+                                    nombre = nombre,
+                                    alias = aliasGenerado,
+                                    contrasena = clave,
+                                    correo = correo,
+                                    telefono = "+56 9 0000 0000",
+                                    direccion = "Santiago"
+                                )
+                                val resultado = withContext(Dispatchers.IO) {
+                                    authRepository.registro(request)
+                                }
+                                registroCargando = false
+                                when (resultado) {
+                                    is ResultadoSync.Exito -> {
+                                        onMensaje("¡Cuenta registrada con éxito en el servidor!")
+                                        pantalla = "login"
+                                    }
+                                    is ResultadoSync.DesdeCacheConError -> {
+                                        onMensaje("Cuenta registrada localmente (sin conexión al servidor)")
+                                        pantalla = "login"
+                                    }
+                                    is ResultadoSync.Error -> {
+                                        registroError = resultado.mensajeError
+                                    }
+                                }
+                            }
+                        }
                     )
                 }
 
                 // PANTALLA 4: DASHBOARD
-
                 "dashboard" -> {
                     if (usuarioLogueado?.rol?.equals(
                             "administrador",
@@ -193,62 +262,8 @@ fun AppNavigation(
                     }
                 }
 
-
-
-                "admin_productos" -> {
-                    if (usuarioLogueado?.rol?.equals(
-                            "administrador",
-                            ignoreCase = true
-                        ) == true
-                    ) {
-                        val vmAdmin: AdminProductosViewModel = viewModel()
-
-                        GestionProductosScreen(
-                            viewModel = vmAdmin,
-                            onVolver = {
-                                pantalla = "dashboard"
-                            }
-                        )
-                    } else {
-                        PantallaPendiente(
-                            titulo = "Acceso restringido",
-                            onVolver = {
-                                pantalla = "dashboard"
-                            }
-                        )
-                    }
-                }
-                // pantalla de inventario
-                "admin_inventario" -> {
-                    if (usuarioLogueado?.rol?.equals(
-                            "administrador",
-                            ignoreCase = true
-                        ) == true
-                    ) {
-                        val vmAdmin: AdminProductosViewModel = viewModel()
-
-                        InventarioScreen(
-                            viewModel = vmAdmin,
-                            onVolver = {
-                                pantalla = "dashboard"
-                            }
-                        )
-                    } else {
-                        PantallaPendiente(
-                            titulo = "Acceso restringido",
-                            onVolver = {
-                                pantalla = "dashboard"
-                            }
-                        )
-                    }
-                }
-
-
                 // PANTALLA 5: CATÁLOGO CONECTADO A LA API REST (PRODUCTOS VIEWMODEL)
                 "catalogo" -> {
-                    LaunchedEffect(Unit) {
-                        productosViewModel.cargarCatalogo()
-                    }
                     CatalogoScreen(
                         onVolver = { pantalla = "dashboard" },
                         productos = productosViewModel.productos,
@@ -400,6 +415,30 @@ fun AppNavigation(
                         pantalla = "detalle"
                     }
                 )
+
+                "admin_productos" -> {
+                    val adminProductosViewModel: AdminProductosViewModel = viewModel()
+                    LaunchedEffect(Unit) { adminProductosViewModel.actualizarCatalogo() }
+                    GestionProductosScreen(
+                        viewModel = adminProductosViewModel,
+                        onVolver = {
+                            productosViewModel.cargarCatalogo()
+                            pantalla = "dashboard"
+                        }
+                    )
+                }
+
+                "admin_inventario" -> {
+                    val adminProductosViewModel: AdminProductosViewModel = viewModel()
+                    LaunchedEffect(Unit) { adminProductosViewModel.actualizarCatalogo() }
+                    InventarioScreen(
+                        viewModel = adminProductosViewModel,
+                        onVolver = {
+                            productosViewModel.cargarCatalogo()
+                            pantalla = "dashboard"
+                        }
+                    )
+                }
 
                 else -> {
                     PantallaPendiente(
