@@ -17,7 +17,7 @@ import com.oyl.frutossecos.network.RetrofitClient
  */
 class ProductoRepository(private val productoDao: ProductoDao) {
 
-    private val api = RetrofitClient.productoApi
+    private val api get() = RetrofitClient.productoApi
 
     /**
      * Sincroniza el catálogo completo desde el servidor y actualiza la caché.
@@ -30,8 +30,7 @@ class ProductoRepository(private val productoDao: ProductoDao) {
                 val productosDto = respuesta.body()!!
                 val productosLocal = productosDto.map { it.toEntity() }
                 // Reemplazar caché local con datos frescos del servidor
-                productoDao.insertarSiNoExisten(productosLocal)
-                productosLocal.forEach { productoDao.actualizar(it) }
+                productoDao.reemplazarCatalogo(productosLocal)
                 ResultadoSync.Exito(productosLocal.filter { it.activo == 1 })
             } else {
                 // Error del servidor: usar caché local

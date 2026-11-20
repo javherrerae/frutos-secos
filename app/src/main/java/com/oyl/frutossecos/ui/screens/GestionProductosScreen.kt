@@ -42,7 +42,7 @@ fun GestionProductosScreen(viewModel: AdminProductosViewModel, onVolver: () -> U
             TextButton(onClick = onVolver) { Text("← Administración", color = VerdeProductosAdmin) }
             Text("Gestionar productos", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = VerdeProductosAdmin)
-            Text("Los cambios se guardan en Room/SQLite de este dispositivo.",
+            Text("Los cambios se guardan en el servidor.",
                 style = MaterialTheme.typography.bodySmall)
             if (viewModel.mensaje != null) {
                 Surface(color = CremaProductosAdmin, shape = RoundedCornerShape(12.dp)) {

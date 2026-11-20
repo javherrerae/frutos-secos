@@ -10,6 +10,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Header
 
 /**
  * Interfaz Retrofit que define los endpoints REST para la gestión de pedidos.
@@ -24,7 +25,8 @@ interface PedidoApi {
      */
     @POST("api/pedidos")
     suspend fun crearPedido(
-        @Body request: CrearPedidoRequest
+        @Body request: CrearPedidoRequest,
+        @Header("Idempotency-Key") operacion: String
     ): Response<PedidoDto>
 
     /**

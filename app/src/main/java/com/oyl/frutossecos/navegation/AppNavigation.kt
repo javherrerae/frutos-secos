@@ -14,6 +14,7 @@ import com.oyl.frutossecos.AppDatabase
 import com.oyl.frutossecos.PantallaBienvenida
 import com.oyl.frutossecos.Usuario
 import com.oyl.frutossecos.dto.RegistroRequest
+import com.oyl.frutossecos.dto.PerfilRequest
 import com.oyl.frutossecos.model.Producto
 import com.oyl.frutossecos.model.TiendasDemo
 import com.oyl.frutossecos.repository.AuthRepository
@@ -177,6 +178,7 @@ fun AppNavigation(
                         )
                     } else {
                         DashboardScreen(
+                            productos = productosViewModel.productos,
                             onAbrirCatalogo = {
                                 pantalla = "catalogo"
                             },
@@ -296,10 +298,6 @@ fun AppNavigation(
                         onDisminuir = { productoId -> carritoViewModel.disminuirCantidad(productoId) },
                         onEliminar = { productoId -> carritoViewModel.eliminarProducto(productoId) },
                         onConfirmar = {
-                            // Capturar los ítems antes de vaciar el carrito
-                            val itemsParaStock = carritoViewModel.items.map {
-                                it.producto.id to it.cantidad
-                            }
                             pedidosViewModel.confirmar(
                                 items = carritoViewModel.items,
                                 tienda = tiendaActual,
@@ -308,11 +306,11 @@ fun AppNavigation(
                                         codigoPedido = pedido.codigo
                                         totalConfirmado = pedido.total
                                         carritoViewModel.vaciarCarrito()
-                                        // Rebajar el stock localmente en Room y refrescar catálogo
-                                        productosViewModel.rebajarStockLocal(itemsParaStock)
+                                        // Consultar las existencias ya descontadas por el servidor
+                                        productosViewModel.cargarCatalogo()
                                         pantalla = "confirmacion"
                                     } else {
-                                        onMensaje("Revisa el carrito y las cantidades antes de confirmar.")
+                                        onMensaje(pedidosViewModel.mensajeUltimoPedido ?: "No se pudo confirmar el pedido.")
                                     }
                                 }
                             )
@@ -358,22 +356,25 @@ fun AppNavigation(
                         rol = usuarioLogueado?.rol ?: "cliente",
                         estadoConexion = estadoConexion,
                         onGuardar = { nombre, correo, telefono, avisos ->
-                            nombrePerfil = nombre
-                            correoPerfil = correo
-                            telefonoPerfil = telefono
-                            avisosPerfil = avisos
                             usuarioLogueado?.let { u ->
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    val modificado = u.copy(
-                                        nombre = nombre,
-                                        correo = correo,
-                                        telefono = telefono
-                                    )
-                                    db.usuarioDao().actualizar(modificado)
-                                    usuarioLogueado = modificado
+                                coroutineScope.launch {
+                                    val resultado = withContext(Dispatchers.IO) {
+                                        authRepository.actualizarPerfil(PerfilRequest(nombre, correo, telefono))
+                                    }
+                                    when (resultado) {
+                                        is ResultadoSync.Exito -> {
+                                            usuarioLogueado = resultado.datos
+                                            nombrePerfil = resultado.datos.nombre
+                                            correoPerfil = resultado.datos.correo
+                                            telefonoPerfil = resultado.datos.telefono
+                                            avisosPerfil = avisos
+                                            onMensaje("Perfil guardado en el servidor.")
+                                        }
+                                        is ResultadoSync.Error -> onMensaje(resultado.mensajeError)
+                                        is ResultadoSync.DesdeCacheConError -> onMensaje("No se guardaron los cambios.")
+                                    }
                                 }
                             }
-                            onMensaje("Perfil guardado y actualizado.")
                         },
                         onCerrarSesion = cerrarSesion,
                         tiendaRetiro = tiendaActual.comuna,
@@ -392,6 +393,7 @@ fun AppNavigation(
                 )
 
                 "qr" -> QRScreen(
+                    productos = productosViewModel.productos,
                     onVolver = { pantalla = "catalogo" },
                     onAbrirProducto = { producto ->
                         productoSeleccionado = producto

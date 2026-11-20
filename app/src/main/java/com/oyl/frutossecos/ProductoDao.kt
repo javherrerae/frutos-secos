@@ -5,11 +5,21 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
 
 /** DAO del catálogo local. Mantiene intactas las consultas usadas por los compañeros. */
 @Dao
 interface ProductoDao {
 
+    @Query("UPDATE productos SET activo = 0")
+    fun desactivarCache()
+
+    @Transaction
+    fun reemplazarCatalogo(productos: List<Producto>) {
+        desactivarCache()
+        insertarSiNoExisten(productos)
+        productos.forEach { actualizar(it) }
+    }
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertarSiNoExisten(productos: List<Producto>)
 

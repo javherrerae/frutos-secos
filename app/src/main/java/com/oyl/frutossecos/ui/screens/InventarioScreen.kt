@@ -47,7 +47,7 @@ fun InventarioScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
                     Text("${productos.sumOf { it.stock.toLong() }} unidades disponibles",
                         fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text("$bajoStock productos con stock bajo (10 unidades o menos)")
-                    Text("Guardado local en Room/SQLite (este dispositivo)",
+                    Text("Inventario actualizado desde el servidor",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -80,7 +80,7 @@ fun InventarioScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
                 item {
                     Spacer(Modifier.height(10.dp))
                     Text("Ajustar existencias", style = MaterialTheme.typography.titleMedium)
-                    Text("Selecciona un producto e ingresa una entrada o salida local.",
+                    Text("Selecciona un producto e ingresa una entrada o salida.",
                         style = MaterialTheme.typography.bodySmall)
                     if (seleccionado != null) {
                         Spacer(Modifier.height(8.dp))
@@ -110,8 +110,8 @@ fun InventarioScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
                         Text("Selecciona un producto de la lista.")
                     }
                     Spacer(Modifier.height(10.dp))
-                    Text("Estos ajustes cambian las existencias de SQLite. " +
-                        "No se guarda historial de movimientos ni se sincroniza con otros dispositivos.",
+                    Text("Los ajustes actualizan el inventario del servidor. " +
+                        "Se requiere conexión para confirmar el cambio.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -120,9 +120,9 @@ fun InventarioScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
     if (confirmar && seleccionado != null && valido && nuevoStock != null && cantidad != null) {
         AlertDialog(
             onDismissRequest = { if (!viewModel.guardando) confirmar = false },
-            title = { Text("Confirmar ajuste local") },
+            title = { Text("Confirmar ajuste") },
             text = { Text("${seleccionado.nombre}: ${seleccionado.stock} → $nuevoStock unidades. " +
-                "Se guardará únicamente en SQLite de este dispositivo.") },
+                "El servidor validará las existencias antes de guardar.") },
             confirmButton = {
                 TextButton(
                     enabled = !viewModel.guardando,

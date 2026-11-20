@@ -1,11 +1,27 @@
-# OYL Frutos Secos
+# OYL Frutos Secos — Android conectado al backend
 
-Proyecto Android nativo desarrollado con Kotlin y Jetpack Compose.
+Aplicación Android con Kotlin, Jetpack Compose, Retrofit y Room.
 
-## Abrir y ejecutar
-1. Descomprime el proyecto y abre la carpeta raíz `frutos-secos` desde Android Studio (la carpeta que contiene `settings.gradle.kts`).
-2. Espera a que Gradle termine la sincronización. Se requiere conexión a Internet la primera vez para descargar Gradle y las dependencias.
-3. Selecciona un emulador o conecta un dispositivo Android y pulsa **Run**.
+Esta copia integra el backend Spring Boot del proyecto: registro/login, catálogo, administración, inventario, perfil y pedidos. Room conserva el carrito y la caché; las escrituras se confirman en el servidor.
 
-## Nota sobre el estado del proyecto
-El catálogo y el carrito usan datos locales de demostración. El inicio de sesión, registro, perfil y confirmación no están conectados a un servidor; los formularios indican/realizan una navegación de demostración.
+## Ejecutar
+
+Abrir esta carpeta en Android Studio, sincronizar Gradle y ejecutar en un emulador con el backend iniciado.
+
+La URL predeterminada es `http://10.0.2.2:8080/`. Para un teléfono físico, configurar en `gradle.properties`:
+
+```properties
+oylBackendUrl=http://IP_DEL_PC:8080/
+```
+
+Usar la IP actual del PC y la misma red Wi-Fi. Se necesita Android SDK 35.
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+La primera vez, borrar los datos anteriores de la app para evitar mezclar las cuentas e IDs de la demostración local con los del servidor.
+
+El backend crea la cuenta `admin / admin123` únicamente al arrancar usuarios con el perfil `demo`. Los clientes se registran desde la app.
+
+La guía completa está en `docs/INTEGRACION.md` del backend. Los estados de pedido se administran mediante la API; no se añadió una pantalla nueva para esa tarea.

@@ -180,14 +180,14 @@ fun PerfilScreen(
             OutlinedButton(onClick = { confirmarSalida = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("Cerrar sesión", color = verde)
             }
-            Text("Datos del perfil persistidos en la base de datos local y sincronizados.",
+            Text("Los cambios del perfil se confirman en el servidor.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
     if (confirmarSalida) {
         AlertDialog(onDismissRequest = { confirmarSalida = false },
             title = { Text("¿Cerrar sesión?") },
-            text = { Text("Se borrarán el perfil, la fotografía, el carrito y el historial de pedidos de esta sesión demo.") },
+            text = { Text("Se cerrará la sesión en este dispositivo. Tus datos y pedidos seguirán guardados en el servidor.") },
             confirmButton = { TextButton(onClick = {
                 confirmarSalida = false
                 archivoAvatar.delete()

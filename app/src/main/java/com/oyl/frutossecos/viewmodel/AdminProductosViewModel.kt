@@ -1,30 +1,28 @@
 package com.oyl.frutossecos.viewmodel
 
 import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.oyl.frutossecos.AppDatabase
 import com.oyl.frutossecos.Producto
-import com.oyl.frutossecos.data.asegurarCatalogoLocal
+import com.oyl.frutossecos.dto.*
+import com.oyl.frutossecos.network.RetrofitClient
+import com.oyl.frutossecos.repository.mensajeError
+import com.oyl.frutossecos.repository.toEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import retrofit2.Response
 
-/** Administración para entrega con Room/SQLite. No hace peticiones de escritura por Retrofit. */
+/** Las escrituras se confirman en el backend; Room es una caché de lectura. */
 class AdminProductosViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = AppDatabase.crear(application).productoDao()
-
-    /** Habilita solo escritura en SQLite local, nunca en el servidor. */
+    private val api get() = RetrofitClient.productoApi
     val escrituraHabilitada = true
-    val esModoLocal = true
-
+    val esModoLocal = false
     private val _productos = mutableStateListOf<Producto>()
     val productos: List<Producto> get() = _productos.toList()
-
     var cargando by mutableStateOf(false)
         private set
     var guardando by mutableStateOf(false)
@@ -34,9 +32,14 @@ class AdminProductosViewModel(application: Application) : AndroidViewModel(appli
 
     init { actualizarCatalogo() }
 
-    private fun mostrarDatos(datos: List<Producto>) {
+    private suspend fun cargarDesdeServidor() {
+        val respuesta = api.obtenerAdministracion()
+        val datos = respuesta.body()
+        if (!respuesta.isSuccessful || datos == null) error(respuesta.mensajeError())
+        val locales = datos.map { it.toEntity() }
+        withContext(Dispatchers.IO) { dao.reemplazarCatalogo(locales) }
         _productos.clear()
-        _productos.addAll(datos)
+        _productos.addAll(locales)
     }
 
     fun actualizarCatalogo() {
@@ -44,127 +47,59 @@ class AdminProductosViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             cargando = true
             try {
-                val datos = withContext(Dispatchers.IO) {
-                    asegurarCatalogoLocal(dao)
-                    dao.obtenerTodos()
-                }
-                mostrarDatos(datos)
-                mensaje = "Catálogo guardado en este dispositivo (Room/SQLite)."
+                cargarDesdeServidor()
+                mensaje = "Catálogo actualizado desde el servidor."
             } catch (e: Exception) {
-                mensaje = "No se pudo leer el catálogo local: ${e.localizedMessage}"
-            } finally {
-                cargando = false
-            }
+                mensaje = e.message ?: "No se pudo consultar el servidor."
+            } finally { cargando = false }
         }
     }
 
-    fun guardarProducto(
-        id: Int?,
-        nombre: String,
-        categoria: String,
-        descripcion: String,
-        presentacion: String,
-        precioTexto: String,
-        onGuardado: () -> Unit
-    ) {
+    private fun escribir(accion: suspend () -> Response<ProductoDto>, onGuardado: () -> Unit = {}) {
         if (guardando || cargando) return
-        val nombreLimpio = nombre.trim()
-        val categoriaLimpia = categoria.trim()
-        val presentacionLimpia = presentacion.trim()
-        val precio = precioTexto.trim().toIntOrNull()
-        if (nombreLimpio.length < 2 || categoriaLimpia.isEmpty() ||
-            presentacionLimpia.isEmpty() || precio == null || precio !in 1..99999999
-        ) {
-            mensaje = "Revisa nombre, categoría, presentación y precio (CLP entero mayor a cero)."
-            return
-        }
         viewModelScope.launch {
             guardando = true
             try {
-                val resultado = withContext(Dispatchers.IO) {
-                    val guardado = if (id == null) {
-                        // La PK existente no tiene autogeneración: asignamos siguiente ID libre.
-                        val nuevo = Producto(
-                            id = dao.siguienteId(),
-                            nombre = nombreLimpio,
-                            categoria = categoriaLimpia,
-                            descripcion = descripcion.trim(),
-                            precio = precio.toDouble(),
-                            presentacion = presentacionLimpia,
-                            stock = 0,
-                            rutaImagen = "🌿",
-                            activo = 1
-                        )
-                        dao.insertarProducto(nuevo) > 0L
-                    } else {
-                        dao.editarDatos(
-                            id, nombreLimpio, categoriaLimpia, descripcion.trim(),
-                            precio.toDouble(), presentacionLimpia
-                        ) == 1
-                    }
-                    guardado to dao.obtenerTodos()
-                }
-                mostrarDatos(resultado.second)
-                mensaje = if (resultado.first) {
-                    if (id == null) "Producto creado en SQLite; stock inicial: 0."
-                    else "Producto actualizado en SQLite."
-                } else "No se pudo encontrar el producto para guardar."
-                if (resultado.first) onGuardado()
+                val respuesta = accion()
+                if (!respuesta.isSuccessful) error(respuesta.mensajeError())
+                mensaje = "Cambio confirmado por el servidor."
+                onGuardado()
+                cargarDesdeServidor()
             } catch (e: Exception) {
-                mensaje = "No se guardó el producto: ${e.localizedMessage}"
-            } finally {
-                guardando = false
-            }
+                mensaje = e.message ?: "No se pudo guardar en el servidor."
+            } finally { guardando = false }
         }
+    }
+
+    fun guardarProducto(id: Int?, nombre: String, categoria: String, descripcion: String,
+            presentacion: String, precioTexto: String, onGuardado: () -> Unit) {
+        val precio = precioTexto.trim().toIntOrNull()
+        if (nombre.trim().length < 2 || categoria.isBlank() || descripcion.isBlank() ||
+                presentacion.isBlank() || precio == null || precio !in 1..99999999) {
+            mensaje = "Revisa nombre, descripción, categoría, presentación y precio."
+            return
+        }
+        val actual = productos.find { it.id == id }
+        if (id != null && actual?.activo != 1) {
+            mensaje = "Activa el producto antes de editarlo."
+            return
+        }
+        val solicitud = ProductoRequest(nombre.trim(), categoria.trim(), descripcion.trim(),
+            precio.toDouble(), presentacion.trim(), actual?.stock ?: 0, actual?.rutaImagen ?: "🌿")
+        escribir({ if (id == null) api.crear(solicitud) else api.editar(id, solicitud) }, onGuardado)
     }
 
     fun cambiarActivo(id: Int, activar: Boolean) {
-        if (guardando || cargando) return
-        viewModelScope.launch {
-            guardando = true
-            try {
-                val resultado = withContext(Dispatchers.IO) {
-                    dao.cambiarActivo(id, if (activar) 1 else 0) to dao.obtenerTodos()
-                }
-                mostrarDatos(resultado.second)
-                mensaje = if (resultado.first == 1) {
-                    if (activar) "Producto activado en SQLite." else "Producto desactivado en SQLite."
-                } else "El producto ya no existe."
-            } catch (e: Exception) {
-                mensaje = "No se cambió el estado: ${e.localizedMessage}"
-            } finally {
-                guardando = false
-            }
-        }
+        escribir({ api.cambiarActivo(id, EstadoProductoRequest(activar)) })
     }
 
-    /** Entrada o salida atómica de existencias, solo en la SQLite de este dispositivo. */
     fun registrarMovimiento(id: Int, entrada: Boolean, cantidad: Int, onGuardado: () -> Unit) {
-        if (guardando || cargando) return
-        if (cantidad !in 1..100000) {
-            mensaje = "La cantidad debe ser entre 1 y 100.000 unidades."
+        val actual = productos.find { it.id == id } ?: return
+        val nuevoStock = actual.stock.toLong() + if (entrada) cantidad.toLong() else -cantidad.toLong()
+        if (cantidad !in 1..100000 || actual.activo != 1 || nuevoStock !in 0..Int.MAX_VALUE.toLong()) {
+            mensaje = "Verifica la cantidad y el stock disponible."
             return
         }
-        viewModelScope.launch {
-            guardando = true
-            try {
-                val resultado = withContext(Dispatchers.IO) {
-                    val modificados = if (entrada) dao.registrarEntrada(id, cantidad)
-                    else dao.registrarSalida(id, cantidad)
-                    modificados to dao.obtenerTodos()
-                }
-                mostrarDatos(resultado.second)
-                if (resultado.first == 1) {
-                    mensaje = "${if (entrada) "Entrada" else "Salida"} de $cantidad unidades guardada en SQLite."
-                    onGuardado()
-                } else {
-                    mensaje = "No se pudo ajustar: verifica stock suficiente y producto activo."
-                }
-            } catch (e: Exception) {
-                mensaje = "No se guardó el ajuste: ${e.localizedMessage}"
-            } finally {
-                guardando = false
-            }
-        }
+        escribir({ api.registrarMovimiento(id, MovimientoStockRequest(entrada, cantidad)) }, onGuardado)
     }
 }

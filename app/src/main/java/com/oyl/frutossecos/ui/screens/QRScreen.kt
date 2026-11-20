@@ -13,21 +13,20 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.oyl.frutossecos.data.ProductosDemo
 import com.oyl.frutossecos.model.Producto
 
 /** Los QR de prueba contienen OYL:1, OYL:2, ... OYL:6. */
 @Composable
-fun QRScreen(onVolver: () -> Unit, onAbrirProducto: (Producto) -> Unit) {
+fun QRScreen(productos: List<Producto>, onVolver: () -> Unit, onAbrirProducto: (Producto) -> Unit) {
     val context = LocalContext.current
     val verde = Color(0xFF456747)
     var resultado by remember { mutableStateOf<String?>(null) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var escaneando by remember { mutableStateOf(false) }
-    val producto = remember(resultado) {
+    val producto = remember(resultado, productos) {
         val id = resultado?.trim()?.takeIf { it.startsWith("OYL:", ignoreCase = true) }
             ?.substringAfter(':')?.toIntOrNull()
-        ProductosDemo.productos.find { it.id == id }
+        productos.find { it.id == id }
     }
 
     Column(
@@ -85,7 +84,7 @@ fun QRScreen(onVolver: () -> Unit, onAbrirProducto: (Producto) -> Unit) {
         }
         if (aviso != null) Text(aviso!!, color = MaterialTheme.colorScheme.error)
         Text(
-            "Actualmente se reconocen códigos de productos OYL:1 a OYL:6.",
+            "Usa el formato OYL:ID con un producto del catálogo.",
             style = MaterialTheme.typography.bodySmall
         )
     }

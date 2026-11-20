@@ -42,9 +42,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Al arrancar, creamos el admin de prueba en SQLite si no existe y leemos la sesión
         viewModelScope.launch(Dispatchers.IO) {
-            repository.inicializarAdminSiEsNecesario()
-            val sesion = db.sesionDao().obtenerSesionActiva()
-            val sesionActiva = sesion?.let { db.usuarioDao().obtenerPorId(it.idUsuario) }
+            val sesionActiva = repository.restaurarSesion()
             _usuarioActual.value = sesionActiva
         }
     }
@@ -91,7 +89,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             // Pausa breve para apreciar el indicador de carga en pantalla
             delay(800)
 
-            val resultado = repository.login(estado.identificador.trim(), estado.clave.trim())
+            val resultado = repository.login(estado.identificador.trim(), estado.clave)
             _loginState.update { it.copy(cargando = false) }
 
             when (resultado) {
@@ -179,7 +177,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             val request = RegistroRequest(
                 nombre = estado.nombre.trim(),
                 alias = aliasGenerado,
-                contrasena = estado.clave.trim(),
+                contrasena = estado.clave,
                 correo = estado.correo.trim(),
                 telefono = "+56 9 0000 0000",
                 direccion = "Santiago"
