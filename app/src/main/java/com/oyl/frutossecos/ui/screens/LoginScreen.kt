@@ -129,7 +129,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { onIngresar(correo.trim(), clave.trim()) },
+                onClick = { onIngresar(correo.trim(), clave) },
                 enabled = correoValido && clave.length >= 6 && !cargando,
                 modifier = Modifier
                     .fillMaxWidth()

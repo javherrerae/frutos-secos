@@ -170,7 +170,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { onRegistrar(nombre.trim(), correo.trim(), clave.trim()) },
+                onClick = { onRegistrar(nombre.trim(), correo.trim(), clave) },
                 enabled = formularioValido && !cargando,
                 modifier = Modifier
                     .fillMaxWidth()
