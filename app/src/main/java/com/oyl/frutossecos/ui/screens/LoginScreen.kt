@@ -156,7 +156,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "💡 Para pruebas: admin@admin.cl / admin123",
+                text = "Administrador demo: consulta la clave configurada en el backend.",
                 fontSize = 12.sp,
                 color = GrafitoOYL.copy(alpha = 0.7f)
             )
