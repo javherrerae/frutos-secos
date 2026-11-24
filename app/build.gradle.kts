@@ -10,6 +10,11 @@ plugins {
 
 kover {
     reports {
+        filters {
+            excludes {
+                classes("com.oyl.frutossecos.*Dao_Impl*", "com.oyl.frutossecos.AppDatabase_Impl*")
+            }
+        }
         verify {
             rule { minBound(80) }
         }

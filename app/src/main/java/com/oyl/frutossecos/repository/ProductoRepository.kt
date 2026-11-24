@@ -2,6 +2,7 @@ package com.oyl.frutossecos.repository
 
 import com.oyl.frutossecos.Producto
 import com.oyl.frutossecos.ProductoDao
+import com.oyl.frutossecos.api.ProductoApi
 import com.oyl.frutossecos.dto.ActualizarStockRequest
 import com.oyl.frutossecos.dto.ProductoDto
 import com.oyl.frutossecos.network.RetrofitClient
@@ -15,9 +16,11 @@ import com.oyl.frutossecos.network.RetrofitClient
  * 2. Si tiene éxito, actualiza la caché local y devuelve los datos.
  * 3. Si falla (sin conexión), devuelve los datos de la caché local.
  */
-class ProductoRepository(private val productoDao: ProductoDao) {
-
-    private val api get() = RetrofitClient.productoApi
+class ProductoRepository(
+    private val productoDao: ProductoDao,
+    private val apiInyectada: ProductoApi? = null
+) {
+    private val api get() = apiInyectada ?: RetrofitClient.productoApi
 
     /**
      * Sincroniza el catálogo completo desde el servidor y actualiza la caché.
