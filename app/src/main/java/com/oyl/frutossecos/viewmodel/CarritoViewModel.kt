@@ -17,10 +17,13 @@ import kotlinx.coroutines.launch
  * Guarda los artículos en Room (SQLite) a través de CarritoRepository,
  * permitiendo persistencia y separación por cada cliente.
  */
-class CarritoViewModel(application: Application) : AndroidViewModel(application) {
+class CarritoViewModel @JvmOverloads constructor(
+    application: Application,
+    repositoryInyectado: CarritoRepository? = null
+) : AndroidViewModel(application) {
 
     private val db = AppDatabase.crear(application)
-    private val repository = CarritoRepository(db.carritoItemDao())
+    private val repository = repositoryInyectado ?: CarritoRepository(db.carritoItemDao())
     private var idUsuarioActual: Int = 1
 
     private val _items = mutableStateListOf<ItemCarrito>()

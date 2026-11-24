@@ -13,14 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.oyl.frutossecos.viewmodel.AdminProductosViewModel
+import com.oyl.frutossecos.viewmodel.AdministracionProductos
 
 private val VerdeStock = Color(0xFF456747)
 private val CremaStock = Color(0xFFF4EBDD)
 
 /** Pantalla 12: stock local. Ajustes atómicos en Room, sin tabla de historial. */
 @Composable
-fun InventarioScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
+fun InventarioScreen(viewModel: AdministracionProductos, onVolver: () -> Unit) {
     var productoId by rememberSaveable { mutableIntStateOf(-1) }
     var entrada by rememberSaveable { mutableStateOf(true) }
     var cantidadTexto by rememberSaveable { mutableStateOf("") }

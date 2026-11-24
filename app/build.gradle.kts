@@ -5,6 +5,20 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     kotlin("kapt")
+    id("org.jetbrains.kotlinx.kover") version "0.9.8"
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("com.oyl.frutossecos.*Dao_Impl*", "com.oyl.frutossecos.AppDatabase_Impl*")
+            }
+        }
+        verify {
+            rule { minBound(80) }
+        }
+    }
 }
 
 val keystoreProperties = Properties().apply {
@@ -59,6 +73,10 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { it.forkEvery = 1 }
+    }
 }
 
 kotlin {
@@ -106,6 +124,10 @@ dependencies {
 
     // Pruebas y Debug
     testImplementation("junit:junit:4.13.2")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
