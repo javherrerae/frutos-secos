@@ -3,6 +3,7 @@ package com.oyl.frutossecos
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.oyl.frutossecos.model.Producto
+import com.oyl.frutossecos.data.CarritoRepository
 import com.oyl.frutossecos.viewmodel.CarritoViewModel
 import org.junit.Assert.*
 import org.junit.Test
@@ -14,9 +15,20 @@ import org.robolectric.annotation.Config
 @Config(sdk = [28])
 class CarritoViewModelTest {
     private val producto = Producto(27, "Nueces", "Frutos", "Natural", "500 g", 3000, 3, "🌰")
+    private fun crearViewModel(): CarritoViewModel {
+        val dao = object : CarritoItemDao {
+            override fun agregarOActualizar(item: CarritoItem) = Unit
+            override fun obtenerPorUsuario(idUsuario: Int) = emptyList<CarritoItem>()
+            override fun eliminarItem(id: Int) = Unit
+            override fun eliminarPorProducto(idUsuario: Int, idProducto: Int) = Unit
+            override fun obtenerItem(idUsuario: Int, idProducto: Int): CarritoItem? = null
+            override fun vaciarCarrito(idUsuario: Int) = Unit
+        }
+        return CarritoViewModel(ApplicationProvider.getApplicationContext<Application>(), CarritoRepository(dao))
+    }
 
     @Test fun limitaStockCalculaTotalesYEliminaAlReducirAUno() {
-        val vm = CarritoViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val vm = crearViewModel()
         vm.agregarProducto(producto, 0)
         vm.agregarProducto(producto, 4)
         assertTrue(vm.items.isEmpty())
@@ -34,7 +46,7 @@ class CarritoViewModelTest {
     }
 
     @Test fun agregarUnProductoExistenteYVaciar() {
-        val vm = CarritoViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val vm = crearViewModel()
         vm.agregarProducto(producto, 1)
         vm.agregarProducto(producto, 2)
         vm.agregarProducto(producto, 1)

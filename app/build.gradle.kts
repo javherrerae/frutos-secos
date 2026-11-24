@@ -73,7 +73,10 @@ android {
         compose = true
         buildConfig = true
     }
-    testOptions { unitTests.isIncludeAndroidResources = true }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { it.forkEvery = 1 }
+    }
 }
 
 kotlin {

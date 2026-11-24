@@ -15,19 +15,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Response
 
+interface AdministracionProductos {
+    val productos: List<Producto>
+    val cargando: Boolean
+    val guardando: Boolean
+    val mensaje: String?
+    fun actualizarCatalogo()
+    fun guardarProducto(id: Int?, nombre: String, categoria: String, descripcion: String,
+        presentacion: String, precioTexto: String, onGuardado: () -> Unit)
+    fun cambiarActivo(id: Int, activar: Boolean)
+    fun registrarMovimiento(id: Int, entrada: Boolean, cantidad: Int, onGuardado: () -> Unit)
+}
+
 /** Las escrituras se confirman en el backend; Room es una caché de lectura. */
-class AdminProductosViewModel(application: Application) : AndroidViewModel(application) {
+class AdminProductosViewModel(application: Application) : AndroidViewModel(application), AdministracionProductos {
     private val dao = AppDatabase.crear(application).productoDao()
     private val api get() = RetrofitClient.productoApi
     val escrituraHabilitada = true
     val esModoLocal = false
     private val _productos = mutableStateListOf<Producto>()
-    val productos: List<Producto> get() = _productos.toList()
-    var cargando by mutableStateOf(false)
+    override val productos: List<Producto> get() = _productos.toList()
+    override var cargando by mutableStateOf(false)
         private set
-    var guardando by mutableStateOf(false)
+    override var guardando by mutableStateOf(false)
         private set
-    var mensaje by mutableStateOf<String?>(null)
+    override var mensaje by mutableStateOf<String?>(null)
         private set
 
     init { actualizarCatalogo() }
@@ -42,7 +54,7 @@ class AdminProductosViewModel(application: Application) : AndroidViewModel(appli
         _productos.addAll(locales)
     }
 
-    fun actualizarCatalogo() {
+    override fun actualizarCatalogo() {
         if (cargando || guardando) return
         viewModelScope.launch {
             cargando = true
@@ -71,7 +83,7 @@ class AdminProductosViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
-    fun guardarProducto(id: Int?, nombre: String, categoria: String, descripcion: String,
+    override fun guardarProducto(id: Int?, nombre: String, categoria: String, descripcion: String,
             presentacion: String, precioTexto: String, onGuardado: () -> Unit) {
         val precio = precioTexto.trim().toIntOrNull()
         if (nombre.trim().length < 2 || categoria.isBlank() || descripcion.isBlank() ||
@@ -89,11 +101,11 @@ class AdminProductosViewModel(application: Application) : AndroidViewModel(appli
         escribir({ if (id == null) api.crear(solicitud) else api.editar(id, solicitud) }, onGuardado)
     }
 
-    fun cambiarActivo(id: Int, activar: Boolean) {
+    override fun cambiarActivo(id: Int, activar: Boolean) {
         escribir({ api.cambiarActivo(id, EstadoProductoRequest(activar)) })
     }
 
-    fun registrarMovimiento(id: Int, entrada: Boolean, cantidad: Int, onGuardado: () -> Unit) {
+    override fun registrarMovimiento(id: Int, entrada: Boolean, cantidad: Int, onGuardado: () -> Unit) {
         val actual = productos.find { it.id == id } ?: return
         val nuevoStock = actual.stock.toLong() + if (entrada) cantidad.toLong() else -cantidad.toLong()
         if (cantidad !in 1..100000 || actual.activo != 1 || nuevoStock !in 0..Int.MAX_VALUE.toLong()) {

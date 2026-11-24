@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.oyl.frutossecos.Producto
-import com.oyl.frutossecos.viewmodel.AdminProductosViewModel
+import com.oyl.frutossecos.viewmodel.AdministracionProductos
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -25,7 +25,7 @@ private val CremaProductosAdmin = Color(0xFFF4EBDD)
 
 /** Pantalla 11: alta, edición y estado de productos persistidos localmente. */
 @Composable
-fun GestionProductosScreen(viewModel: AdminProductosViewModel, onVolver: () -> Unit) {
+fun GestionProductosScreen(viewModel: AdministracionProductos, onVolver: () -> Unit) {
     var busqueda by rememberSaveable { mutableStateOf("") }
     var mostrarFormulario by rememberSaveable { mutableStateOf(false) }
     var productoEditar by remember { mutableStateOf<Producto?>(null) }
