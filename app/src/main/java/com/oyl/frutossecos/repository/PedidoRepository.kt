@@ -4,6 +4,7 @@ import com.oyl.frutossecos.Pedido
 import com.oyl.frutossecos.PedidoDao
 import com.oyl.frutossecos.PedidoItem
 import com.oyl.frutossecos.PedidoItemDao
+import com.oyl.frutossecos.api.PedidoApi
 import com.oyl.frutossecos.dto.ActualizarEstadoRequest
 import com.oyl.frutossecos.dto.CrearPedidoRequest
 import com.oyl.frutossecos.dto.PedidoDto
@@ -20,10 +21,11 @@ import com.oyl.frutossecos.network.RetrofitClient
  */
 class PedidoRepository(
     private val pedidoDao: PedidoDao,
-    private val pedidoItemDao: PedidoItemDao
+    private val pedidoItemDao: PedidoItemDao,
+    private val apiInyectada: PedidoApi? = null
 ) {
 
-    private val api get() = RetrofitClient.pedidoApi
+    private val api get() = apiInyectada ?: RetrofitClient.pedidoApi
 
     /**
      * Crea un nuevo pedido en el servidor.

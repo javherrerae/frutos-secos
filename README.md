@@ -40,3 +40,5 @@ En PowerShell, con JDK 21 y el SDK de Android configurados:
 ```
 
 El informe de pruebas debug se genera en `app/build/reports/tests/testDebugUnitTest/index.html` y el de cobertura del módulo en `app/build/reports/kover/html/index.html`. Kover agrega las variantes debug y release y verifica un mínimo del 80 % de líneas. Se excluyen únicamente las implementaciones de DAO y de la base de datos generadas por Room (`*Dao_Impl*` y `AppDatabase_Impl*`); las interfaces, pantallas y demás código de la aplicación siguen incluidos. Las pruebas JVM no miden pruebas instrumentadas ejecutadas en dispositivo. El umbral aún no se alcanza; el informe permite identificar las clases pendientes.
+
+Las pruebas de interfaz de `app/src/testDebug` usan Robolectric y Compose en la JVM. Requieren que Gradle pueda descargar las dependencias y la imagen Android correspondiente a la API 28. Las pruebas comunes se ejecutan en debug y release; las de interfaz se ejecutan en debug, donde está disponible la actividad de prueba de Compose. Kover agrega los resultados de ambas variantes.
