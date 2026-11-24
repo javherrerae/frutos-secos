@@ -5,11 +5,13 @@ import com.oyl.frutossecos.SesionDao
 import com.oyl.frutossecos.Usuario
 import com.oyl.frutossecos.UsuarioDao
 import com.oyl.frutossecos.dto.*
+import com.oyl.frutossecos.api.AuthApi
 import com.oyl.frutossecos.network.RetrofitClient
 
 /** El servidor autentica y registra; Room conserva únicamente la caché del perfil. */
-class AuthRepository(private val usuarioDao: UsuarioDao, private val sesionDao: SesionDao) {
-    private val api get() = RetrofitClient.authApi
+class AuthRepository(private val usuarioDao: UsuarioDao, private val sesionDao: SesionDao,
+    private val apiInyectada: AuthApi? = null) {
+    private val api get() = apiInyectada ?: RetrofitClient.authApi
 
     suspend fun login(alias: String, contrasena: String): ResultadoSync<Usuario> {
         return try {
