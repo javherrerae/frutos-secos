@@ -5,6 +5,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     kotlin("kapt")
+    id("org.jetbrains.kotlinx.kover") version "0.9.8"
+}
+
+kover {
+    reports {
+        verify {
+            rule { minBound(80) }
+        }
+    }
 }
 
 val keystoreProperties = Properties().apply {
